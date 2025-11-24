@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Class Grades</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <!-- Inline favicon (data URL) to avoid creating new files; rounded corners -->
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' ry='18' fill='%231976d2' width='100' height='100'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='Arial' fill='white'>V</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f4f6fa 0%, #eef1f6 100%);
+            color: #1a1a1a;
+            font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+            font-size: 15px;
+        }
+
+        h1 {
+            margin: 0 0 16px 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1f3b5c;
+            letter-spacing: -0.02em;
+        }
+
+        /* --- Smooth blur when modal opens --- */
+        #main-content.blur {
+            filter: blur(5px) brightness(0.92);
+            transition: filter 0.25s ease;
+        }
+
+        /* --- Table Container --- */
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            background: #ffffffcc;
+            backdrop-filter: blur(8px);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+            transition: 0.2s ease;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid #e8e8ef;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background: #f5f6fb;
+            font-weight: 600;
+            color: #3b3b55;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            letter-spacing: 0.03em;
+        }
+
+        th.sortable { cursor: pointer; position: relative; }
+        th.sorted-asc::after { content: " ▲"; font-size: 0.78rem; color: #666; }
+        th.sorted-desc::after { content: " ▼"; font-size: 0.78rem; color: #666; }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f2f7ff;
+            cursor: pointer;
+        }
+
+        tr.selected {
+            background: #e3edff !important;
+            box-shadow: inset 0 0 0 2px #4a90e24d;
+        }
+
+        .name-cell {
+            text-align: left;
+            font-weight: 600;
+            color: #2e3550;
+        }
+
+        .avg {
+            font-size: 0.9em;
+            margin-left: 6px;
+            font-weight: 700;
+            opacity: 0.85;
+        }
+
+        .avg.green {
+            color: #1e7a1e;
+        }
+
+        .avg.red {
+            color: #d21919;
+        }
+
+        .num-col {
+            color: #4a90e2;
+            opacity: 0.8;
+            font-size: 0.85em;
+        }
+
+        .grade {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 24px;
+            border-radius: 6px;
+            padding: 0 4px;
+            font-weight: 600;
+            font-size: 14px;
+            box-sizing: border-box;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .grade.missing {
+            background: #f3f3f3 !important;
+            color: #7a7a7a !important;
+            font-size: 11px;
+            width: 28px;
+        }
+        /* small wrapper and arrow indicator next to each grade */
+        .grade-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .grade-arrow {
+            display: inline-block;
+            width: 12px;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1;
+            color: #6b7280;
+            user-select: none;
+        }
+        .grade-arrow.up { color: #1e7a1e; }
+        .grade-arrow.down { color: #d21919; }
+        .grade-arrow.flat { color: #7a7a7a; }
+
+        /* Right-hand summary columns */
+        .sep-col {
+            border-left: 3px solid rgba(0, 0, 0, 0.06);
+            background: #fafbff;
+        }
+
+        /* Yellow shading system preserved */
+        .yellow-shade-1 {
+            background: #fffce6;
+        }
+
+        .yellow-shade-2 {
+            background: #fff6b3;
+        }
+
+        .yellow-shade-3 {
+            background: #ffea80;
+        }
+
+        .yellow-shade-4 {
+            background: #ffd74d;
+        }
+
+        .yellow-shade-5 {
+            background: #ffc700;
+        }
+
+        /* --- Modal Modernized --- */
+        #radar-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(20, 28, 40, 0.22);
+            backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #radar-modal.active {
+            display: flex;
+        }
+
+        #radar-popup {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px 32px 20px;
+            width: min(92vw, 760px);
+            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.16);
+            animation: modalIn 240ms cubic-bezier(.15, .85, .25, 1);
+            transition: opacity 220ms ease, transform 220ms ease;
+            position: relative;
+            text-align: center;
+        }
+
+        #radar-title {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #1f3b5c;
+            margin-bottom: 14px;
+        }
+
+        #radar-close {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #4a90e2;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #radar-close:hover {
+            color: #1f3b5c;
+            transform: scale(1.12);
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        #chart {
+            width: 100%;
+            height: 520px;
+        }
+        /* Radar stats panel inside modal */
+        #radar-stats {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: #2b3b4a;
+        }
+        .radar-stat {
+            background: #f6f9ff;
+            padding: 8px 12px;
+            border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            min-width: 120px;
+            text-align: left;
+        }
+        .radar-stat .label { display:block; font-size:0.78rem; color:#556; }
+        .radar-stat .value { font-weight:700; font-size:1.05rem; margin-top:4px; }
+        /* small arrow inside stats for score indicator */
+        .stat-arrow { margin-left:8px; font-size:11px; vertical-align:middle; }
+        .stat-arrow.up { color: #1e7a1e; }
+        .stat-arrow.down { color: #d21919; }
+        .stat-arrow.flat { color: #7a7a7a; }
+        /* Report button */
+        .btn-report {
+            background: #2b7fd9;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(43,127,217,0.12);
+            transition: background-color 160ms ease, box-shadow 160ms ease;
+        }
+        .btn-report:hover { background-color: #5b9ff0; box-shadow: 0 10px 24px rgba(43,127,217,0.14); }
+
+        /* Report modal */
+        #report-modal { display:none; position: fixed; inset:0; z-index:1200; background: rgba(20,28,40,0.22); backdrop-filter: blur(10px); align-items:center; justify-content:center; padding:20px; }
+        #report-modal.active { display:flex; }
+        #report-popup { background:#fff; border-radius:16px; padding:20px 20px 16px; width:min(92vw,760px); box-shadow:0 14px 48px rgba(0,0,0,0.16); max-height:86vh; overflow:hidden; }
+        #report-title { margin:0 0 8px 0; font-size:1.2rem; color:#1f3b5c; }
+        #report-body { font-size:0.95rem; color:#222; white-space:pre-wrap; max-height: calc(86vh - 120px); overflow:auto; border-radius:10px; background: #ffffff; padding: 12px; }
+        #report-body > div { padding-bottom:10px; margin-bottom:12px; border-bottom:1px solid #f0f2f5; }
+        #report-body > div:last-child { border-bottom: none; margin-bottom:0; padding-bottom:0; }
+        /* modern scrollbar styling */
+        #report-body::-webkit-scrollbar { width: 8px; }
+        #report-body::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
+        #report-body::-webkit-scrollbar-thumb { background: #d0d8e0; border-radius: 10px; transition: background 200ms ease; }
+        #report-body::-webkit-scrollbar-thumb:hover { background: #a8b3bf; }
+        #report-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+        .btn-plain { background: #eef4ff; border: none; padding:8px 10px; border-radius:8px; cursor:pointer; }
+        /* per-section copy buttons: icon-only, smaller */
+        .sec-copy { background: none; border: none; color: #4a90e2; cursor: pointer; font-size: 0.85rem; padding: 4px 6px; border-radius: 4px; transition: background-color 140ms ease, color 140ms ease; font-weight: 600; }
+        .sec-copy:hover { background-color: #dbeafe; color: #1976d2; }
+        /* Histogram controls inside modal (hidden for radar) */
+        #histogram-controls { display: none; justify-content: center; gap: 12px; margin-top: 16px; margin-bottom: 8px; align-items:center }
+        #histogram-controls label { font-size: 0.9rem; color: #556; margin-right: 6px; }
+        #histogram-controls input[type="range"] { vertical-align: middle; width:220px; appearance: none; -webkit-appearance: none; -moz-appearance: none; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#dbeafe,#bfdbfe); outline: none; }
+        #histogram-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width:18px; height:18px; border-radius:50%; background:#1976d2; box-shadow:0 2px 6px rgba(25,118,210,0.35); border: 2px solid white; }
+        #histogram-controls input[type="range"]::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#1976d2; box-shadow:0 2px 6px rgba(25,118,210,0.35); border: 2px solid white; }
+        #histogram-controls #hist-bin-label { font-weight:700; color:#2b3b4a; margin-left:6px; }
+        /* closing state for popups */
+        #radar-popup.closing, #report-popup.closing { opacity: 0; transform: translateY(8px); }
+        /* blur fade during close - synchronized with popup animation */
+        #main-content.blur.closing { filter: blur(0px) brightness(1); transition: filter 220ms ease; }
+    </style>
+    <div id="radar-modal">
+        <div id="radar-popup">
+            <button id="radar-close" title="Chiudi">&times;</button>
+            <h2 id="radar-title"></h2>
+            <div id="radar-stats" aria-hidden="true">
+                <div class="radar-stat"><span class="label">&lt;6</span><span class="value" id="stat-below">-</span></div>
+                <div class="radar-stat"><span class="label">Deficit</span><span class="value" id="stat-deficit">-</span></div>
+                <div class="radar-stat"><span class="label">Deficit medio</span><span class="value" id="stat-ratio">-</span></div>
+                <div class="radar-stat"><span class="label">Score</span><span class="value" id="stat-score">-</span></div>
+            </div>
+            <div id="histogram-controls" aria-hidden="true">
+                <label for="hist-bin-width">Granularità asse X:</label>
+                <input id="hist-bin-width" type="range" min="0.25" max="2" step="0.25" value="1">
+                <span id="hist-bin-label">1</span>
+            </div>
+            <div id="hist-stats" style="display:none;justify-content:center;gap:12px;margin-bottom:10px;font-size:0.95rem;color:#2b3b4a"></div>
+            <canvas id="chart"></canvas>
+            <div style="height:10px"></div>
+        </div>
+    </div>
+    <!-- Report modal -->
+    <div id="report-modal" aria-hidden="true">
+        <div id="report-popup">
+            <button id="report-close" title="Chiudi" style="position:absolute;right:18px;top:12px;background:none;border:none;font-size:1.8rem;color:#4a90e2;cursor:pointer">&times;</button>
+            <h3 id="report-title">Report della classe</h3>
+            <div id="report-body" role="document">Caricamento report...</div>
+            <div id="report-actions">
+                <button id="copy-report" class="btn-plain">Copia report</button>
+                <button id="print-report" class="btn-plain">Stampa</button>
+            </div>
+        </div>
+    </div>
+    <div id="main-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <h1 style="margin:0">Voti della Classe</h1>
+            <div style="display:flex;gap:12px;align-items:center">
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                    <label for="csv-file-input" class="btn-report" style="margin:0;cursor:pointer;display:inline-block">Carica CSV</label>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display:none" title="Carica un file CSV">
+                    <span id="file-name" style="font-size:0.85rem;color:#556"></span>
+                </div>
+                <button id="generate-report" class="btn-report" title="Genera un breve report automatico">Genera report</button>
+            </div>
+        </div>
+        <div id="app"></div>
+    </div>
+    <script>
+        // Utility: parse CSV with comma/period decimals, missing values as NaN
+        function parseCSVToObject(csv) {
+            const lines = csv.trim().split(/\r?\n/);
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                // Split respecting quoted commas
+                const cols = [];
+                let cur = '', inQuotes = false;
+                for (let i = 0; i < line.length; ++i) {
+                    const c = line[i];
+                    if (c === '"') inQuotes = !inQuotes;
+                    else if (c === ',' && !inQuotes) { cols.push(cur); cur = ''; }
+                    else cur += c;
+                }
+                cols.push(cur);
+                // Pad missing columns
+                while (cols.length < headers.length) cols.push('');
+                const obj = {};
+                headers.forEach((h, i) => {
+                    let v = (cols[i] || '').replace(/"/g, '').trim();
+                    // Convert grades to numbers, handle both dot and comma decimals
+                    if (i > 1 && v !== '') v = parseFloat(v.replace(',', '.'));
+                    else if (i > 1) v = NaN;
+                    obj[h] = v;
+                });
+                return obj;
+            });
+        }
+
+        // Color for grade: green (≥6), red (<6), shade by value
+        function gradeColor(v) {
+            if (isNaN(v)) return '#444';
+            if (v >= 6) {
+                // Green: from #e6fbe6 (6) to #1ec01e (10)
+                const p = (v - 6) / 4;
+                const r = Math.round(230 - 214 * p), g = Math.round(251 - 51 * p), b = Math.round(230 - 198 * p);
+                return `rgb(${r},${g},${b})`;
+            } else {
+                // Red: from #fbe6e6 (6) to #c01e1e (0)
+                const p = v / 6;
+                const r = Math.round(251 - 59 * p), g = Math.round(230 - 214 * p), b = Math.round(230 - 214 * p);
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        // Fetch and render (store globals so report generator can use them)
+        let GLOBAL_students = [];
+        let GLOBAL_subjects = [];
+        let GLOBAL_classAvg = [];
+        let GLOBAL_overallAvg = NaN;
+
+        fetch('data/voti-1g-novembre.csv').then(r => r.text()).then(csv => {
+            processCSV(csv);
+        });
+
+        // Handle file input for manual CSV upload
+        document.getElementById('csv-file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const csv = event.target.result;
+                    processCSV(csv);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Process CSV data and render table
+        function processCSV(csv) {
+            const data = parseCSVToObject(csv);
+            const subjects = Object.keys(data[0]).slice(2);
+            const students = data.map(row => ({
+                id: row[Object.keys(row)[0]],
+                name: row[Object.keys(row)[1]],
+                grades: subjects.map(s => row[s])
+            }));
+
+            // Compute class averages per subject
+            const classAvg = subjects.map((_, i) => {
+                const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+            });
+
+            // overall average
+            const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+            const overallAvg = allVals.length ? allVals.reduce((a,b)=>a+b,0)/allVals.length : NaN;
+
+            // store globals
+            GLOBAL_students = students;
+            GLOBAL_subjects = subjects;
+            GLOBAL_classAvg = classAvg;
+            GLOBAL_overallAvg = overallAvg;
+
+            // expose globals on window for debugging if needed
+            window.GLOBAL_students = GLOBAL_students;
+            window.GLOBAL_subjects = GLOBAL_subjects;
+            window.GLOBAL_classAvg = GLOBAL_classAvg;
+            window.GLOBAL_overallAvg = GLOBAL_overallAvg;
+
+            renderTable(students, subjects, classAvg);
+        }
+
+        function yellowShade(val, max) {
+            if (val === 0) return 'yellow-shade-1';
+            if (val < max * 0.25) return 'yellow-shade-2';
+            if (val < max * 0.5) return 'yellow-shade-3';
+            if (val < max * 0.75) return 'yellow-shade-4';
+            return 'yellow-shade-5';
+        }
+        function renderTable(students, subjects, classAvg) {
+            const app = document.getElementById('app');
+            const table = document.createElement('table');
+
+            // Build colgroup: first two columns fixed, last three fixed, subjects share remaining space
+            const colgroup = document.createElement('colgroup');
+            const colNum = document.createElement('col'); colNum.style.width = '48px'; colgroup.appendChild(colNum);
+            const colName = document.createElement('col'); colName.style.width = '240px'; colgroup.appendChild(colName);
+            for (let i = 0; i < subjects.length; i++) {
+                colgroup.appendChild(document.createElement('col'));
+            }
+            const colBelow = document.createElement('col'); colBelow.style.width = '64px'; colgroup.appendChild(colBelow);
+            const colDef = document.createElement('col'); colDef.style.width = '72px'; colgroup.appendChild(colDef);
+            const colRatio = document.createElement('col'); colRatio.style.width = '56px'; colgroup.appendChild(colRatio);
+            table.appendChild(colgroup);
+
+            const thead = document.createElement('thead');
+            // shorten "MATEMATICA" to "MATE" for display
+            const displaySubjects = subjects.map(s => s === 'MATEMATICA' ? 'MATE' : s);
+            // Build header with data-col indices so sorting knows which td index to use
+            let headersHtml = '<tr>';
+            headersHtml += `<th class="sortable" data-col="0">N.</th>`;
+            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.78rem;color:#556">(Ordina: Nome)</span></th>`;
+            displaySubjects.forEach((s, i) => { headersHtml += `<th class="subject sortable" data-col="${2 + i}">${s}</th>`; });
+            const colBelowIdx = 2 + subjects.length;
+            headersHtml += `<th class="sep-col sortable" data-col="${colBelowIdx}">&lt;6</th>`;
+            headersHtml += `<th class="sep-col sortable" data-col="${colBelowIdx + 1}">Deficit</th>`;
+            headersHtml += `<th class="sep-col deficit-medio-head sortable" data-col="${colBelowIdx + 2}">DEF. MED.</th>`;
+            headersHtml += '</tr>';
+            thead.innerHTML = headersHtml;
+            table.appendChild(thead);
+
+            // Precompute student averages to use for correlations
+            const studentAvgs = students.map(s => {
+                const vals = s.grades.filter(v => !isNaN(v));
+                return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+            });
+
+            const tbody = document.createElement('tbody');
+            students.forEach((s, idx) => {
+                const validGrades = s.grades.filter(v => !isNaN(v));
+                const avg = studentAvgs[idx];
+                const below = s.grades.filter(g => !isNaN(g) && g < 6).length;
+                const deficit = s.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+                const ratio = below > 0 ? (deficit / below).toFixed(2) : '';
+                const belowClass = yellowShade(below, subjects.length);
+                const deficitClass = yellowShade(deficit, subjects.length * 6);
+                const avgClass = isNaN(avg) ? '' : (avg >= 6 ? 'green' : 'red');
+                const tr = document.createElement('tr');
+                    tr.innerHTML =
+                    `<td class="num-col">${s.id}</td><td class="name-cell">${s.name}${isNaN(avg) ? '' : ' ' + `<span class='avg ${avgClass}'>${avg.toFixed(2)}</span>`}</td>` +
+                    s.grades.map((g, i) => {
+                        const missing = isNaN(g);
+                        const cls = `grade${missing ? ' missing' : ''}`;
+                        const style = missing ? '' : `background:${gradeColor(g)};color:${g >= 6 ? '#185c18' : '#f9b6c1'}`;
+                        const text = missing ? '-' : g;
+                        // determine arrow based on comparison with class average for this subject
+                        let arrow = '';
+                        let arrowClass = '';
+                        const subjAvg = classAvg && classAvg[i];
+                        if (missing || typeof subjAvg === 'undefined' || isNaN(subjAvg)) {
+                            arrow = '';
+                            arrowClass = '';
+                        } else if (g > subjAvg) {
+                            arrow = '▲'; arrowClass = 'up';
+                        } else if (g < subjAvg) {
+                            arrow = '▼'; arrowClass = 'down';
+                        } else {
+                            arrow = '─'; arrowClass = 'flat';
+                        }
+                        return `<td><span class="grade-wrap"><span class="${cls}" style="${style}">${text}</span><span class="grade-arrow ${arrowClass}">${arrow}</span></span></td>`;
+                    }).join('') +
+                    `<td class="below6-col ${belowClass} sep-col">${below}</td>` +
+                    `<td class="deficit-col ${deficitClass} sep-col">${deficit.toFixed(2)}</td>` +
+                    `<td class="deficit-medio-col ${deficitClass} sep-col">${ratio}</td>`;
+                    tr.onclick = () => {
+                        document.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
+                        tr.classList.add('selected');
+                        // pass class-level averages for the summary panels
+                        const stats = {
+                            belowAvg: mean(belowCounts),
+                            deficitAvg: mean(deficitsArr),
+                            ratioAvg: (function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length ? mean(vals) : NaN; })(),
+                            classOverallAvg: overallAvg
+                        };
+                        showChart(s, subjects, classAvg, stats);
+                    };
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            // Helper stats functions
+            function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+            function stddev(arr) { const m = mean(arr); return Math.sqrt(arr.reduce((s, x) => s + (x - m) * (x - m), 0) / arr.length); }
+            function pearson(x, y) {
+                if (x.length !== y.length || x.length < 2) return NaN;
+                const mx = mean(x), my = mean(y);
+                const num = x.reduce((s, xi, i) => s + (xi - mx) * (y[i] - my), 0);
+                const sx = Math.sqrt(x.reduce((s, xi) => s + (xi - mx) * (xi - mx), 0));
+                const sy = Math.sqrt(y.reduce((s, yi) => s + (yi - my) * (yi - my), 0));
+                const den = sx * sy;
+                return den === 0 ? NaN : num / den;
+            }
+
+            // Build footer rows: class mean, std dev, correlation (subject vs student overall avg)
+            const tfoot = document.createElement('tfoot');
+            // overall class average across all numeric grades
+            const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+            const overallAvg = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : NaN;
+            const overallStd = allVals.length ? stddev(allVals) : NaN;
+            // Compute per-student summary arrays for the right-hand columns (<6 count, deficit sum, deficit medio)
+            const belowCounts = students.map(s => s.grades.filter(g => !isNaN(g) && g < 6).length);
+            const deficitsArr = students.map(s => s.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0));
+            const ratiosArr = belowCounts.map((b, i) => b > 0 ? (deficitsArr[i] / b) : NaN);
+            const fmt = v => (isNaN(v) ? '' : v.toFixed(2));
+
+            // Media classe row
+            const avgRow = document.createElement('tr');
+            avgRow.innerHTML = `<th colspan="2">Media classe ${isNaN(overallAvg) ? '' : `<strong>${fmt(overallAvg)}</strong>`}</th>` +
+                subjects.map((_, i) => `<td>${fmt(classAvg[i])}</td>`).join('') +
+                `<td class="sep-col">${fmt(mean(belowCounts))}</td>` +
+                `<td class="sep-col">${fmt(mean(deficitsArr))}</td>` +
+                `<td class="sep-col">${fmt((function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length? mean(vals) : NaN; })())}</td>`;
+            tfoot.appendChild(avgRow);
+
+            // Standard deviation row
+            const sdRow = document.createElement('tr');
+            const sdCells = subjects.map((_, i) => {
+                const vals = students.map((s, si) => s.grades[i]).filter(v => !isNaN(v));
+                return `<td>${isNaN(vals[0]) ? '' : stddev(vals).toFixed(2)}</td>`;
+            }).join('');
+            sdRow.innerHTML = `<th colspan="2">Dev. std ${isNaN(overallStd) ? '' : `<strong>${fmt(overallStd)}</strong>`}</th>` + sdCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
+            tfoot.appendChild(sdRow);
+
+            // Correlation row (subject grade vs student overall average)
+            const corrRow = document.createElement('tr');
+            const corrCells = subjects.map((_, i) => {
+                const x = [];
+                const y = [];
+                students.forEach((s, si) => {
+                    const gv = s.grades[i];
+                    const av = studentAvgs[si];
+                    if (!isNaN(gv) && !isNaN(av)) { x.push(gv); y.push(av); }
+                });
+                const c = pearson(x, y);
+                return `<td>${isNaN(c) ? '' : c.toFixed(2)}</td>`;
+            }).join('');
+            corrRow.innerHTML = `<th colspan="2">Corr. vs media stud.</th>` + corrCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
+            tfoot.appendChild(corrRow);
+
+            table.appendChild(tfoot);
+
+            // Add click handlers to footer: subject averages -> show subject histogram
+            (function attachFooterHandlers() {
+                try {
+                    const avgRow = tfoot.querySelector('tr');
+                    if (!avgRow) return;
+                    // first cell is TH colspan=2 (Media classe) - make clickable to show histogram of student averages
+                    const firstTh = avgRow.querySelector('th');
+                    if (firstTh) {
+                        firstTh.style.cursor = 'pointer';
+                        firstTh.title = 'Clicca per mostrare distribuzione medie studenti';
+                        firstTh.addEventListener('click', () => {
+                            // compute student overall averages
+                            const vals = students.map(s => {
+                                const vs = s.grades.filter(v => !isNaN(v));
+                                return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : NaN;
+                            }).filter(v => !isNaN(v));
+                            // compute overall avg and stddev of student averages
+                            const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+                            const sd = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); };
+                            const overallAvgStudents = vals.length ? mean(vals) : NaN;
+                            const overallSdStudents = vals.length ? sd(vals) : NaN;
+                            showHistogram('Distribuzione: Medie studenti', vals, { overallAvg: overallAvgStudents, overallStd: overallSdStudents });
+                        });
+                    }
+                    // subject tds follow
+                    const tds = Array.from(avgRow.querySelectorAll('td'));
+                    // subjects are the first subjects.length tds
+                    for (let i = 0; i < subjects.length; i++) {
+                        const td = tds[i];
+                        if (!td) continue;
+                        td.style.cursor = 'pointer';
+                        td.title = `Clicca per mostrare distribuzione voti in ${subjects[i]}`;
+                        td.addEventListener('click', () => {
+                            // gather raw values for this subject (keeping order) and compute stats
+                            const valsAll = students.map(s => s.grades[i]);
+                            const vals = valsAll.filter(v => !isNaN(v));
+                            const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+                            const sd = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); };
+                            const subjAvg = vals.length ? mean(vals) : NaN;
+                            const subjStd = vals.length ? sd(vals) : NaN;
+                            // compute correlation between subject grades and student averages (align indices)
+                            const x = [], y = [];
+                            students.forEach((s, idx) => {
+                                const gv = s.grades[i];
+                                const av = studentAvgs[idx];
+                                if (!isNaN(gv) && !isNaN(av)) { x.push(gv); y.push(av); }
+                            });
+                            const pearson = (a,b) => {
+                                if (a.length !== b.length || a.length < 2) return NaN;
+                                const ma = a.reduce((s,x)=>s+x,0)/a.length;
+                                const mb = b.reduce((s,x)=>s+x,0)/b.length;
+                                const num = a.reduce((s,ai,i)=>s+(ai-ma)*(b[i]-mb),0);
+                                const sa = Math.sqrt(a.reduce((s,ai)=>s+(ai-ma)*(ai-ma),0));
+                                const sb = Math.sqrt(b.reduce((s,bi)=>s+(bi-mb)*(bi-mb),0));
+                                const den = sa*sb; return den===0?NaN:num/den;
+                            };
+                            const corr = pearson(x,y);
+                            showHistogram(`Distribuzione: ${subjects[i]}`, vals, { subjAvg, subjStd, corr });
+                        });
+                    }
+                } catch (e) { /* ignore */ }
+            })();
+
+            // Attach sorting handlers to the header cells
+            (function attachSortHandlers(tbl, studentsData, studentAvgsData) {
+                const ths = tbl.querySelectorAll('th.sortable');
+                // map id -> avg for fast lookup when sorting by average
+                const idToAvg = {};
+                studentsData.forEach((st, i) => { idToAvg[String(st.id)] = studentAvgsData[i]; });
+
+                ths.forEach(th => th.addEventListener('click', () => {
+                    const col = parseInt(th.getAttribute('data-col'));
+                    // special-case: name column toggles between alphabetical and order-by-average
+                    if (col === 1) {
+                        const mode = tbl.dataset.nameSortMode === 'alpha' ? 'avg' : 'alpha';
+                        tbl.dataset.nameSortMode = mode;
+                        tbl.querySelectorAll('th').forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                        if (mode === 'alpha') {
+                            sortTable(tbl, 1, 'asc');
+                            th.classList.add('sorted-asc');
+                            th.querySelector('.sort-method').textContent = '(Ordina: Nome)';
+                        } else {
+                            sortByAvg(tbl, 'desc');
+                            th.classList.add('sorted-desc');
+                            th.querySelector('.sort-method').textContent = '(Ordina: Media)';
+                        }
+                        tbl.dataset.sortCol = col; tbl.dataset.sortDir = mode === 'alpha' ? 'asc' : 'desc';
+                        return;
+                    }
+
+                    const currentCol = parseInt(tbl.dataset.sortCol);
+                    let dir = tbl.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+                    if (currentCol !== col) dir = 'asc';
+                    sortTable(tbl, col, dir);
+                    // update header indicators
+                    tbl.querySelectorAll('th').forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                    th.classList.add(dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                    tbl.dataset.sortCol = col; tbl.dataset.sortDir = dir;
+                }));
+
+                function getCellValue(row, colIndex) {
+                    const cell = row.children[colIndex];
+                    if (!cell) return '';
+                    return cell.textContent.trim();
+                }
+
+                function sortTable(tbl, colIndex, dir) {
+                    const tbody = tbl.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    // Decide if numeric column by checking first few values
+                    let numeric = true;
+                    for (let r of rows) {
+                        const v = getCellValue(r, colIndex);
+                        if (v === '') continue;
+                        if (isNaN(parseFloat(v.replace(',', '.')))) { numeric = false; break; }
+                    }
+                    const compare = (a, b) => {
+                        const va = getCellValue(a, colIndex);
+                        const vb = getCellValue(b, colIndex);
+                        if (numeric) {
+                            const na = parseFloat(va.replace(',', '.'));
+                            const nb = parseFloat(vb.replace(',', '.'));
+                            const aNan = isNaN(na), bNan = isNaN(nb);
+                            if (aNan && bNan) return 0;
+                            if (aNan) return 1;
+                            if (bNan) return -1;
+                            return na - nb;
+                        } else {
+                            return va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+                        }
+                    };
+                    rows.sort((a, b) => compare(a, b) * (dir === 'asc' ? 1 : -1));
+                    // Re-append rows in sorted order
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+
+                function sortByAvg(tbl, dir) {
+                    const tbody = tbl.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort((a, b) => {
+                        const ida = getCellValue(a, 0);
+                        const idb = getCellValue(b, 0);
+                        const va = idToAvg[String(ida)];
+                        const vb = idToAvg[String(idb)];
+                        const aNan = isNaN(va), bNan = isNaN(vb);
+                        if (aNan && bNan) return 0;
+                        if (aNan) return 1;
+                        if (bNan) return -1;
+                        return (va - vb) * (dir === 'asc' ? 1 : -1);
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                }
+            })(table, students, studentAvgs);
+            app.innerHTML = '';
+            app.appendChild(table);
+        }
+        // Helper to animate closing popups and restore UI state with synchronized blur fade
+        function closeWithAnim(modal, popupId, onClosed) {
+            const popup = document.getElementById(popupId);
+            const mainContent = document.getElementById('main-content');
+            if (popup) popup.classList.add('closing');
+            if (mainContent) mainContent.classList.add('closing');
+            setTimeout(() => {
+                if (popup) popup.classList.remove('closing');
+                if (mainContent) mainContent.classList.remove('closing', 'blur');
+                modal.classList.remove('active');
+                try { if (typeof onClosed === 'function') onClosed(); } catch(e) {}
+            }, 220);
+        }
+
+        // Radar chart as modal popup
+        let chart;
+        function showChart(student, subjects, classAvg, stats) {
+            const modal = document.getElementById('radar-modal');
+            const title = document.getElementById('radar-title');
+            title.textContent = student.name;
+            const hc = document.getElementById('histogram-controls');
+            modal.classList.add('active');
+            document.getElementById('main-content').classList.add('blur');
+            // ensure histogram controls are hidden and stats panel visible
+            const statsPanel = document.getElementById('radar-stats');
+            if (hc) hc.style.display = 'none';
+            if (statsPanel) statsPanel.style.display = '';
+            // recreate the canvas to ensure a fresh context and remove any previous canvas listeners
+            const popup = document.getElementById('radar-popup');
+            const oldCanvas = popup.querySelector('#chart');
+            if (oldCanvas) oldCanvas.remove();
+            const newCanvas = document.createElement('canvas'); newCanvas.id = 'chart';
+            popup.appendChild(newCanvas);
+            const ctx = newCanvas.getContext('2d');
+            if (chart) { try { chart.destroy(); } catch (e) {} chart = null; }
+            // Only plot grades that are not NaN
+            const grades = student.grades.map((v, i) => ({ v, i })).filter(x => !isNaN(x.v));
+            const filteredSubjects = grades.map(x => subjects[x.i]);
+            const filteredLabels = filteredSubjects.map(s => s === 'MATEMATICA' ? 'MATE' : s);
+            const filteredGrades = grades.map(x => x.v);
+            const filteredClassAvg = grades.map(x => isNaN(classAvg[x.i]) ? null : classAvg[x.i]);
+            // compute student summary and average values
+            const studentBelow = student.grades.filter(g => !isNaN(g) && g < 6).length;
+            const studentDeficit = student.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+            const studentRatio = studentBelow > 0 ? (studentDeficit / studentBelow) : NaN;
+            const studentValsAll = student.grades.filter(v => !isNaN(v));
+            const studentOverallAvg = studentValsAll.length ? studentValsAll.reduce((a,b)=>a+b,0)/studentValsAll.length : NaN;
+            // populate stats panel
+            const sb = document.getElementById('stat-below');
+            const sd = document.getElementById('stat-deficit');
+            const sr = document.getElementById('stat-ratio');
+            if (sb) sb.textContent = studentBelow;
+            if (sd) sd.textContent = isNaN(studentDeficit) ? '-' : studentDeficit.toFixed(2);
+            if (sr) sr.textContent = isNaN(studentRatio) ? '-' : studentRatio.toFixed(2);
+            // show class averages if provided
+            if (stats) {
+                if (sb) sb.innerHTML = `${studentBelow} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.belowAvg)?'-':stats.belowAvg.toFixed(2)})</span>`;
+                if (sd) sd.innerHTML = `${isNaN(studentDeficit)?'-':studentDeficit.toFixed(2)} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.deficitAvg)?'-':stats.deficitAvg.toFixed(2)})</span>`;
+                if (sr) sr.innerHTML = `${isNaN(studentRatio)?'-':studentRatio.toFixed(2)} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.ratioAvg)?'-':stats.ratioAvg.toFixed(2)})</span>`;
+            }
+            // compute and show Score: student's overall avg minus class overall average
+            const scoreEl = document.getElementById('stat-score');
+            if (scoreEl) {
+                const classOverall = stats && typeof stats.classOverallAvg !== 'undefined' ? stats.classOverallAvg : NaN;
+                if (isNaN(studentOverallAvg) || isNaN(classOverall)) {
+                    scoreEl.textContent = '-';
+                } else {
+                    const diff = studentOverallAvg - classOverall;
+                    const sign = diff > 0 ? '+' : (diff < 0 ? '' : '');
+                    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '─');
+                    const arrowCls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'flat');
+                    scoreEl.innerHTML = `${sign}${diff.toFixed(2)} <span class="stat-arrow ${arrowCls}">${arrow}</span>`;
+                }
+            }
+            // plugin to draw value labels for student's dataset only
+            const valueLabelsPlugin = {
+                id: 'valueLabels',
+                afterDatasetsDraw(chart) {
+                    const ctx = chart.ctx;
+                    chart.data.datasets.forEach((dataset, dsIndex) => {
+                        if (dataset.label === 'Media Classe') return; // skip class avg
+                        const meta = chart.getDatasetMeta(dsIndex);
+                        meta.data.forEach((pt, i) => {
+                            const v = dataset.data[i];
+                            if (v === null || v === undefined) return;
+                            ctx.save();
+                            // color label same as point color if available
+                            let color = '#222';
+                            const pb = dataset.pointBackgroundColor;
+                            if (Array.isArray(pb)) color = pb[i] || color;
+                            else if (pb) color = pb;
+                            ctx.fillStyle = color;
+                            // white outline for label to keep contrast over the chart
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 3;
+                            ctx.font = '15px "Inter", system-ui, Arial';
+                            ctx.textAlign = 'center';
+                            // draw outline then fill; position a bit farther from the dot
+                            const textX = pt.x;
+                            const textY = pt.y - 14;
+                            ctx.strokeText(String(v), textX, textY);
+                            ctx.fillText(String(v), textX, textY);
+                            ctx.restore();
+                        });
+                    });
+                }
+            };
+
+            chart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: filteredLabels,
+                    datasets: [
+                        {
+                            label: student.name,
+                            data: filteredGrades,
+                            borderColor: '#1976d2',
+                            // fill color depends on student's overall average
+                            backgroundColor: isNaN(studentOverallAvg) ? 'rgba(25,118,210,0.06)' : (studentOverallAvg >= 6 ? 'rgba(30,192,30,0.10)' : 'rgba(210,25,25,0.08)'),
+                            pointBackgroundColor: filteredGrades.map(v => v >= 6 ? '#1ec01e' : '#d21919'),
+                            pointBorderColor: 'rgba(0,0,0,0)',
+                            pointBorderWidth: 0,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            fill: true,
+                            borderWidth: 2,
+                            order: 1
+                        },
+                        {
+                            label: 'Media Classe',
+                            data: filteredClassAvg,
+                            borderColor: 'rgba(25,118,210,0.5)',
+                            backgroundColor: 'rgba(25,118,210,0.12)',
+                            pointBackgroundColor: filteredClassAvg.map(v => v === null ? 'rgba(0,0,0,0)' : '#1976d2'),
+                            pointBorderColor: 'rgba(0,0,0,0)',
+                            pointBorderWidth: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            fill: false,
+                            borderWidth: 2,
+                            order: 2
+                        }
+                    ]
+                },
+                plugins: [valueLabelsPlugin],
+                options: {
+                    plugins: {
+                        legend: { labels: { color: '#1976d2', font: { size: 14 } } }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: { color: '#bbb' },
+                            grid: { color: '#bbb', lineWidth: ctx => (ctx.tick && ctx.tick.value === 6) ? 2.2 : 1 },
+                            pointLabels: { color: '#222', font: { size: 13 } },
+                            min: 0, max: 10, ticks: { color: '#222', stepSize: 2 }
+                        }
+                    }
+                }
+            });
+            // Close logic: animate closing, then clean up chart and UI
+            document.getElementById('radar-close').onclick = () => {
+                closeWithAnim(modal, 'radar-popup', () => {
+                    if (statsPanel) statsPanel.style.display = '';
+                    if (hc) hc.style.display = 'none';
+                    if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                });
+            };
+            modal.onclick = e => {
+                if (e.target === modal) {
+                    closeWithAnim(modal, 'radar-popup', () => {
+                        if (statsPanel) statsPanel.style.display = '';
+                        if (hc) hc.style.display = 'none';
+                        if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                    });
+                }
+            };
+        }
+
+        // Show a histogram in the same modal using the #chart canvas
+        // `opts` may contain { subjAvg, subjStd, corr } for subject histograms
+        // or { overallAvg, overallStd } for the overall-students histogram
+        function showHistogram(title, values, opts) {
+            const modal = document.getElementById('radar-modal');
+            const titleEl = document.getElementById('radar-title');
+            const statsPanel = document.getElementById('radar-stats');
+            const hc = document.getElementById('histogram-controls');
+            const slider = document.getElementById('hist-bin-width');
+            const sliderLabel = document.getElementById('hist-bin-label');
+            titleEl.textContent = title;
+            // hide radar stats panel for histograms
+            if (statsPanel) statsPanel.style.display = 'none';
+            if (hc) { hc.style.display = 'flex'; }
+            if (sliderLabel && slider) sliderLabel.textContent = slider.value;
+            // populate the dedicated histogram-stats block (if opts provided)
+            const histStatsEl = document.getElementById('hist-stats');
+            if (histStatsEl) {
+                if (opts && (typeof opts.subjAvg !== 'undefined' || typeof opts.overallAvg !== 'undefined')) {
+                    // build content depending on opts
+                    let parts = [];
+                    if (typeof opts.subjAvg !== 'undefined') parts.push(`<div class="radar-stat"><span class="label">Media:</span><span class="value">${isNaN(opts.subjAvg)?'-':opts.subjAvg.toFixed(2)}</span></div>`);
+                    if (typeof opts.subjStd !== 'undefined') parts.push(`<div class="radar-stat"><span class="label">Dev. std:</span><span class="value">${isNaN(opts.subjStd)?'-':opts.subjStd.toFixed(2)}</span></div>`);
+                    if (typeof opts.corr !== 'undefined') parts.push(`<div class="radar-stat"><span class="label">Corr. vs media stud.:</span><span class="value">${isNaN(opts.corr)?'-':opts.corr.toFixed(2)}</span></div>`);
+                    if (typeof opts.overallAvg !== 'undefined') parts.unshift(`<div class="radar-stat"><span class="label">Media generale:</span><span class="value">${isNaN(opts.overallAvg)?'-':opts.overallAvg.toFixed(2)}</span></div>`);
+                    if (typeof opts.overallStd !== 'undefined') parts.push(`<div class="radar-stat"><span class="label">Dev. std generale:</span><span class="value">${isNaN(opts.overallStd)?'-':opts.overallStd.toFixed(2)}</span></div>`);
+                    histStatsEl.innerHTML = parts.join('');
+                    histStatsEl.style.display = 'flex';
+                } else {
+                    histStatsEl.style.display = 'none';
+                    histStatsEl.innerHTML = '';
+                }
+            }
+            modal.classList.add('active');
+            document.getElementById('main-content').classList.add('blur');
+            // recreate canvas to ensure a fresh element for Chart.js
+            const popup = document.getElementById('radar-popup');
+            const oldCanvas = popup.querySelector('#chart');
+            if (oldCanvas) oldCanvas.remove();
+            const newCanvas = document.createElement('canvas'); newCanvas.id = 'chart';
+            popup.appendChild(newCanvas);
+            // Move the histogram slider controls to the bottom of the popup so it appears under the chart
+            if (hc) popup.appendChild(hc);
+            const ctx = newCanvas.getContext('2d');
+            if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+            // Prepare a render function that bins values according to a variable bin width
+            function renderBins(binWidth) {
+                binWidth = parseFloat(binWidth) || 1;
+                const nBins = Math.max(1, Math.ceil(10 / binWidth));
+                const bins = new Array(nBins).fill(0);
+                for (let v of values) {
+                    if (isNaN(v)) continue;
+                    let idx = Math.floor(v / binWidth);
+                    if (idx < 0) idx = 0;
+                    if (idx >= nBins) idx = nBins - 1;
+                    bins[idx]++;
+                }
+                const labels = [];
+                for (let i = 0; i < nBins; i++) {
+                    const lower = (i * binWidth);
+                    const upper = Math.min(10, (i + 1) * binWidth);
+                        const center = (lower + upper) / 2;
+                        // display whole grade only when bin width is exactly 1; otherwise show interval string
+                        const fmt = n => (Math.abs(n - Math.round(n)) < 1e-9 ? String(Math.round(n)) : n.toFixed(2));
+                        if (Math.abs(binWidth - 1) < 1e-9) {
+                            labels.push(String(Math.round(center)));
+                        } else {
+                            labels.push(`${fmt(lower)}-${fmt(upper)}`);
+                        }
+                }
+                if (!chart) {
+                    chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: { labels, datasets: [{ label: 'Conteggio', data: bins, backgroundColor: 'rgba(25,118,210,0.6)' }] },
+                        options: {
+                            plugins: { legend: { display: false } },
+                            scales: { x: { ticks: { color: '#222' } }, y: { beginAtZero: true, ticks: { color: '#222' } } }
+                        }
+                    });
+                } else {
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = bins;
+                    chart.update();
+                }
+            }
+
+            // initial render using slider value (if present) or 1
+            const initialBin = slider ? parseFloat(slider.value) : 1;
+            renderBins(initialBin);
+            // wire slider to update bins (override previous handler)
+            if (slider) {
+                slider.oninput = () => {
+                    const bw = parseFloat(slider.value);
+                    if (sliderLabel) sliderLabel.textContent = slider.value;
+                    renderBins(bw);
+                };
+            }
+            // Close logic: animate closing, then cleanup
+            document.getElementById('radar-close').onclick = () => {
+                closeWithAnim(modal, 'radar-popup', () => {
+                    if (statsPanel) statsPanel.style.display = '';
+                    if (hc) hc.style.display = 'none';
+                    if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                });
+            };
+            modal.onclick = e => {
+                if (e.target === modal) {
+                    closeWithAnim(modal, 'radar-popup', () => {
+                        if (statsPanel) statsPanel.style.display = '';
+                        if (hc) hc.style.display = 'none';
+                        if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                    });
+                }
+            };
+        }
+        
+        // Generate a human-readable Italian report and show it in a modal
+        function generateReport() {
+            const students = window.GLOBAL_students || [];
+            const subjects = window.GLOBAL_subjects || [];
+            const classAvg = window.GLOBAL_classAvg || [];
+            const overallAvg = window.GLOBAL_overallAvg;
+            const today = new Date().toLocaleDateString('it-IT');
+
+            function mean(arr){ if(!arr || arr.length===0) return NaN; return arr.reduce((a,b)=>a+b,0)/arr.length; }
+            function stddev(arr){ if(!arr||arr.length===0) return NaN; const m = mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); }
+
+            // per-subject stats
+            const subjStats = subjects.map((subj, i) => {
+                const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                const avg = vals.length? mean(vals) : NaN;
+                const sd = vals.length? stddev(vals) : NaN;
+                const belowCount = vals.filter(v => v < 6).length;
+                const deficit = vals.filter(v => v < 6).reduce((a,b)=>a+(6-b),0);
+                return { subj, avg, sd, belowCount, deficit };
+            });
+
+            // student averages
+            const studentAvgs = students.map(s => {
+                const vals = s.grades.filter(v=>!isNaN(v));
+                const avg = vals.length? mean(vals) : NaN;
+                return { name: s.name, avg };
+            });
+
+            const sorted = studentAvgs.slice().filter(s=>!isNaN(s.avg)).sort((a,b)=>b.avg-a.avg);
+            const top = sorted.slice(0,3);
+            const bottom = sorted.slice(-3).reverse();
+
+            // build multiple report sections (plain-text + html) so each can be copied separately
+            const allNumericGrades = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+            const overallSd = allNumericGrades.length ? stddev(allNumericGrades) : NaN;
+            const belowCounts = students.map(s => s.grades.filter(v => !isNaN(v) && v < 6).length);
+            const meanBelowPerStudent = belowCounts.length ? mean(belowCounts) : NaN;
+            const totalInsuff = subjStats.reduce((a,b)=>a+b.belowCount,0);
+            const totalDeficit = subjStats.reduce((a,b)=>a+b.deficit,0);
+            const avgDeficitPerInsuff = totalInsuff ? (totalDeficit / totalInsuff) : NaN;
+
+            // Section: Overall metrics
+            const overallPlain = `Media generale di classe: ${isNaN(overallAvg)?'-':overallAvg.toFixed(2)}\nDeviazione standard generale: ${isNaN(overallSd)?'-':overallSd.toFixed(2)}\nNumero medio di insufficienze (per studente): ${isNaN(meanBelowPerStudent)?'-':meanBelowPerStudent.toFixed(2)}\nScostamento medio dalla sufficienza (per insufficienza): ${isNaN(avgDeficitPerInsuff)?'-':avgDeficitPerInsuff.toFixed(2)}\n`;
+
+            // Section: per-subject means
+            let subjPlain = 'Medie per materia:\n';
+            subjStats.forEach(s => subjPlain += ` - ${s.subj}: ${isNaN(s.avg)?'-':s.avg.toFixed(2)} (dev.std ${isNaN(s.sd)?'-':s.sd.toFixed(2)})\n`);
+
+            // Section: counts and deficits
+            let countsPlain = 'Conteggi voti <6 per materia e deficit totale:\n';
+            subjStats.forEach(s => countsPlain += ` - ${s.subj}: <6=${s.belowCount}, deficit=${s.deficit.toFixed(2)}\n`);
+
+            // Section: top/bottom
+            const topPlain = `Top: ${top.map(t=>`${t.name} (${t.avg.toFixed(2)})`).join(' / ')}\nBottom: ${bottom.map(t=>`${t.name} (${t.avg.toFixed(2)})`).join(' / ')}\n`;
+
+            // Section: comments
+            let commentsPlain = 'Commento automatico:\n';
+            subjStats.forEach(s => {
+                if (isNaN(s.avg)) commentsPlain += ` - ${s.subj}: dati insufficienti.\n`;
+                else if (s.avg < 5.5) commentsPlain += ` - ${s.subj}: media bassa (${s.avg.toFixed(2)}). Suggerito intervento mirato.\n`;
+                else if (s.avg < 6.5) commentsPlain += ` - ${s.subj}: media nella fascia di attenzione (${s.avg.toFixed(2)}). Monitorare i progressi.\n`;
+                else commentsPlain += ` - ${s.subj}: media soddisfacente (${s.avg.toFixed(2)}).\n`;
+            });
+
+            // aggregate plain text (full report)
+            const fullPlain = `Report di classe — ${today}\n\n` + overallPlain + '\n' + subjPlain + '\n' + countsPlain + '\n' + topPlain + '\n' + commentsPlain;
+
+            // build html with separate sections and per-section copy buttons
+            let html = `<div>`;
+            html += `<div style="display:flex;justify-content:space-between;align-items:center"><strong>Report di classe — ${today}</strong><div></div></div>`;
+            html += `<div style="margin-top:8px;" id="sec-overall"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Metriche generali</strong><button class="sec-copy btn-plain" data-sec="overall">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${overallPlain}</pre></div>`;
+            html += `<div id="sec-subj"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Medie per materia</strong><button class="sec-copy btn-plain" data-sec="subjects">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${subjPlain}</pre></div>`;
+            html += `<div id="sec-counts"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Conteggi &lt;6 e deficit</strong><button class="sec-copy btn-plain" data-sec="counts">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${countsPlain}</pre></div>`;
+            html += `<div id="sec-top"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Classifica sintetica</strong><button class="sec-copy btn-plain" data-sec="top">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${topPlain}</pre></div>`;
+            html += `<div id="sec-comments"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Commento automatico</strong><button class="sec-copy btn-plain" data-sec="comments">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${commentsPlain}</pre></div>`;
+            html += `</div>`;
+
+            // pass a map of section plain texts to showReport so it can wire per-section copy buttons
+            const sectionsMap = { overall: overallPlain, subjects: subjPlain, counts: countsPlain, top: topPlain, comments: commentsPlain };
+            showReport(html, fullPlain, sectionsMap);
+        }
+
+        function showReport(htmlContent, plainText, sections) {
+            const modal = document.getElementById('report-modal');
+            const popup = document.getElementById('report-popup');
+            const body = document.getElementById('report-body');
+            const title = document.getElementById('report-title');
+            body.innerHTML = htmlContent;
+            modal.classList.add('active');
+            document.getElementById('main-content').classList.add('blur');
+
+            // wire copy
+            const copyBtn = document.getElementById('copy-report');
+            if (copyBtn) {
+                copyBtn.onclick = async () => {
+                    try {
+                        await navigator.clipboard.writeText(plainText);
+                        copyBtn.textContent = 'Copiato';
+                        setTimeout(()=>copyBtn.textContent = 'Copia report',1200);
+                    } catch(e){
+                        alert('Copia fallita: ' + (e && e.message));
+                    }
+                };
+            }
+
+            // per-section copy buttons (if sections map provided)
+            if (sections && typeof sections === 'object') {
+                const secBtns = popup.querySelectorAll('.sec-copy');
+                secBtns.forEach(btn => {
+                    const key = btn.getAttribute('data-sec');
+                    btn.onclick = async () => {
+                        const txt = sections[key] || '';
+                        try {
+                            await navigator.clipboard.writeText(txt);
+                            const old = btn.textContent;
+                            btn.textContent = 'Copiato';
+                            setTimeout(()=> btn.textContent = old, 1000);
+                        } catch(e) {
+                            alert('Copia fallita: ' + (e && e.message));
+                        }
+                    };
+                });
+            }
+
+            // print
+            const printBtn = document.getElementById('print-report');
+            if (printBtn) {
+                printBtn.onclick = () => {
+                    const w = window.open('', '_blank');
+                    w.document.write(`<html><head><title>Report</title></head><body>${htmlContent}</body></html>`);
+                    w.document.close();
+                    w.print();
+                };
+            }
+
+            // close handlers (animated)
+            document.getElementById('report-close').onclick = () => {
+                closeWithAnim(modal, 'report-popup');
+            };
+            modal.onclick = e => { if (e.target === modal) { closeWithAnim(modal, 'report-popup'); } };
+        }
+
+        // wire generate report button after DOM ready
+        document.addEventListener('click', function(ev){
+            if (ev.target && ev.target.id === 'generate-report') {
+                generateReport();
+            }
+        });
+    </script>
+    </body>
+
+</html>
