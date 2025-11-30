@@ -496,7 +496,7 @@
         const playPauseBtn = document.getElementById('playPauseBtn');
         const canvasModeToggleBtn = document.getElementById('canvasModeToggleBtn');
         const bnwToggleBtn = document.getElementById('bnwToggleBtn');
-        const toggleRectsBtn = document.getElementById('toggleRectsBtn'); // NEW
+        const toggleRectsBtn = document.getElementById('toggleRectsBtn');
         const resetSettingsBtn = document.getElementById('resetSettingsBtn');
 
         let transformationRects = [];
@@ -504,7 +504,12 @@
         let intervalId = null;
         let isCanvasLightMode = false;
         let isBNWTransformMode = false;
-        let showTransforms = true; // NEW STATE
+        let showTransforms = true;
+
+        // NEW: Persistent state for the last calculated point
+        let currentIFS_X = 0;
+        let currentIFS_Y = 0;
+        const BURN_IN_POINTS = 20; // Used only for the initial run
 
         let dragMode = null;
         let dragStartX, dragStartY;
@@ -578,15 +583,22 @@
             };
         }
 
-        function runIFS(numPoints) {
-            let currentX = 0;
-            let currentY = 0;
+        /**
+         * Runs a batch of IFS iterations starting from a given point.
+         * @param {number} numPoints The number of points to generate (including burn-in if initial run).
+         * @param {number} startX The x-coordinate to start from.
+         * @param {number} startY The y-coordinate to start from.
+         * @param {boolean} isInitialRun Whether this is the first run, requiring burn-in.
+         * @returns {{points: Array, finalX: number, finalY: number}} The generated points and the final point.
+         */
+        function runIFSBatch(numPoints, startX, startY, isInitialRun) {
+            let currentX = startX;
+            let currentY = startY;
             const newPoints = [];
-            const BURN_IN = 20;
 
-            if (transformationRects.length === 0) return [];
+            if (transformationRects.length === 0) return { points: [], finalX: startX, finalY: startY };
 
-            // NEW: Determine attractor color override
+            // Determine attractor color override
             const bnwAttractorColor = isBNWTransformMode ? (isCanvasLightMode ? ACCENT_RED : WHITE_COLOR) : null;
 
             const mappings = transformationRects.map(rect => ({
@@ -596,7 +608,7 @@
             }));
 
             let totalProb = mappings.reduce((sum, m) => sum + m.p, 0);
-            if (totalProb === 0) return [];
+            if (totalProb === 0) return { points: [], finalX: startX, finalY: startY };
 
             const cumulativeProbs = [];
             let currentSum = 0;
@@ -605,7 +617,10 @@
                 cumulativeProbs.push(currentSum);
             }
 
-            for (let i = 0; i < numPoints + BURN_IN; i++) {
+            // If it's the initial run, include burn-in points in the loop count
+            const totalIterations = numPoints + (isInitialRun ? BURN_IN_POINTS : 0);
+
+            for (let i = 0; i < totalIterations; i++) {
                 const r = Math.random();
                 let selectedMapping = null;
                 for (let j = 0; j < mappings.length; j++) {
@@ -620,12 +635,13 @@
                 currentX = nextPoint.x;
                 currentY = nextPoint.y;
 
-                if (i >= BURN_IN) {
-                    const pointColor = bnwAttractorColor || selectedMapping.color; // Use B&W color if active
+                // Only push points after burn-in
+                if (i >= BURN_IN_POINTS || !isInitialRun) {
+                    const pointColor = bnwAttractorColor || selectedMapping.color;
                     newPoints.push({ x: currentX, y: currentY, color: pointColor });
                 }
             }
-            return newPoints;
+            return { points: newPoints, finalX: currentX, finalY: currentY };
         }
 
         function mapToCanvas(coord) {
@@ -647,12 +663,26 @@
 
         // --- 3. UI and Control Functions (Local Storage Integration) ---
 
+        // MODIFIED: No longer clears canvas, uses/updates persistent state.
         function runSingleIteration() {
             if (transformationRects.length === 0) return;
-            resetCanvas(true);
+            stopAutoIterate(); // Ensure auto-iterate is off
+
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+
+            const isInitialRun = currentIFS_X === 0 && currentIFS_Y === 0;
+
+            // Run the batch using the persistent starting point
+            const result = runIFSBatch(numIter, currentIFS_X, currentIFS_Y, isInitialRun);
+
+            // Draw the new points cumulatively
+            drawPoints(result.points, alpha);
+
+            // Update the persistent state for the next run
+            currentIFS_X = result.finalX;
+            currentIFS_Y = result.finalY;
+
             document.getElementById('iterateBtn').setAttribute('data-ran-once', 'true');
         }
 
@@ -671,8 +701,9 @@
                 alphaValue: document.getElementById('alphaValue').value,
                 isCanvasLightMode: isCanvasLightMode,
                 isBNWTransformMode: isBNWTransformMode,
-                showTransforms: showTransforms, // SAVE NEW STATE
+                showTransforms: showTransforms,
                 transformationRects: scaledRects
+                // NOTE: currentIFS_X/Y are not saved, as the fractal state is regenerated on load.
             };
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
         }
@@ -700,7 +731,7 @@
                     ? '<span class="material-icons-round">palette</span>Colored Transforms'
                     : '<span class="material-icons-round">invert_colors</span>B&W Transforms';
 
-                showTransforms = settings.showTransforms !== undefined ? settings.showTransforms : true; // LOAD NEW STATE
+                showTransforms = settings.showTransforms !== undefined ? settings.showTransforms : true;
                 toggleRectsBtn.innerHTML = showTransforms
                     ? '<span class="material-icons-round">visibility_off</span>Hide Transforms'
                     : '<span class="material-icons-round">visibility</span>Show Transforms';
@@ -720,12 +751,20 @@
                     };
                 });
             } else {
-                // Load default Sierpinski Gasket if no saved settings
-                isCanvasLightMode = false;
-                document.body.classList.remove('light-canvas-mode');
-                isBNWTransformMode = false;
+                // --- NEW DEFAULTS FOR FIRST TIME OPENING ---
+                isCanvasLightMode = true; // Default to Light Canvas Mode
+                document.body.classList.add('light-canvas-mode'); // Apply light mode body class
+                isBNWTransformMode = true; // Default to B&W Transform Mode
                 showTransforms = true;
 
+                // Update button texts for the new defaults
+                canvasModeToggleBtn.innerHTML = '<span class="material-icons-round">dark_mode</span>Dark Canvas';
+                bnwToggleBtn.innerHTML = '<span class="material-icons-round">palette</span>Colored Transforms';
+                toggleRectsBtn.innerHTML = '<span class="material-icons-round">visibility_off</span>Hide Transforms';
+                // --- END NEW DEFAULTS ---
+
+
+                // Load default Sierpinski Gasket
                 IFS_PRESETS.sierpinski.forEach(rect => {
                     transformationRects.push({
                         x: rect.x * initialScaleFactor,
@@ -739,13 +778,14 @@
                 });
             }
 
-            resetCanvas(true);
+            resetCanvas(true); // Clear canvas and reset persistent state
             renderTransformationsUI();
             setActiveTransform(0);
 
-            const numIter = parseInt(document.getElementById('numIterations').value);
-            const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+            // Run an initial step to draw the fractal on load
+            if (transformationRects.length > 0) {
+                runSingleIteration();
+            }
         }
 
         function resetAllSettings() {
@@ -776,14 +816,19 @@
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
 
+            // When starting auto-iterate, we implicitly clear the canvas and reset the persistent point
             resetCanvas(true);
 
             const iterateStep = () => {
-                const newPoints = runIFS(numIter);
-                drawPoints(newPoints, alpha);
+                const result = runIFSBatch(numIter, currentIFS_X, currentIFS_Y, false); // Not initial run
+                drawPoints(result.points, alpha);
+                currentIFS_X = result.finalX; // Update persistent state
+                currentIFS_Y = result.finalY;
+
                 document.getElementById('iterateBtn').setAttribute('data-ran-once', 'true');
             };
 
+            // Run once immediately, then start interval
             iterateStep();
             intervalId = setInterval(iterateStep, 100);
             playPauseBtn.innerHTML = '<span class="material-icons-round">pause_circle</span>Pause Auto-Iterate';
@@ -798,10 +843,20 @@
             }
         }
 
-        function resetCanvas(clearOnly = true) {
+        /**
+         * Clears the canvas and optionally resets the persistent IFS point state.
+         * @param {boolean} resetState If true, resets currentIFS_X and Y to (0,0). Defaults to true.
+         */
+        function resetCanvas(resetState = true) {
             ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
             ctx.fillStyle = isCanvasLightMode ? '#fff' : '#000';
             ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            if (resetState) {
+                currentIFS_X = 0;
+                currentIFS_Y = 0;
+                document.getElementById('iterateBtn').removeAttribute('data-ran-once');
+            }
         }
 
         function updateVisualModes() {
@@ -810,6 +865,8 @@
                 stopAutoIterate();
                 startAutoIterate();
             } else if (document.getElementById('iterateBtn').hasAttribute('data-ran-once')) {
+                // If it ran once, clear and re-run fully to re-draw with new colors
+                resetCanvas(true);
                 runSingleIteration();
             }
         }
@@ -822,12 +879,13 @@
                 ? '<span class="material-icons-round">dark_mode</span>Dark Canvas'
                 : '<span class="material-icons-round">light_mode</span>Light Canvas';
 
-            resetCanvas(true);
+            resetCanvas(false); // Clear canvas but keep persistent point
             drawOverlays();
             updateVisualModes();
             saveSettings();
         }
 
+        // MODIFIED: Added call to renderTransformationsUI() to update P label colors.
         function toggleBNWTransforms() {
             isBNWTransformMode = !isBNWTransformMode;
 
@@ -836,11 +894,11 @@
                 : '<span class="material-icons-round">invert_colors</span>B&W Transforms';
 
             drawOverlays();
+            renderTransformationsUI(); // <-- FIX: Re-render the side panel to update the P label colors
             updateVisualModes();
             saveSettings();
         }
 
-        // NEW FUNCTION
         function toggleShowTransforms() {
             showTransforms = !showTransforms;
             toggleRectsBtn.innerHTML = showTransforms
@@ -861,9 +919,17 @@
             if (isNaN(val) && key !== 'color') return;
             transformationRects[index][key] = val;
 
-            if (intervalId && key !== 'color' && key !== 'p') {
-                resetCanvas(true);
+            // When a transform changes, we must reset the IFS state to force a re-calculation
+            if (intervalId) {
+                stopAutoIterate();
+                startAutoIterate();
+            } else {
+                resetCanvas(true); // Reset canvas and persistent state
+                if (document.getElementById('iterateBtn').hasAttribute('data-ran-once')) {
+                    runSingleIteration(); // Re-run a single step
+                }
             }
+
 
             if (key === 'width' || key === 'height') {
                 renderTransformationsUI();
@@ -878,6 +944,7 @@
                         }
                     }
                     if (key === 'color') {
+                        // Update the color label immediately if not in B&W mode
                         if (!isBNWTransformMode) {
                             const h4Span = item.querySelector('h4 span');
                             if (h4Span) h4Span.style.color = val;
@@ -895,9 +962,13 @@
         function removeTransformRect(index) {
             transformationRects.splice(index, 1);
             activeRectIndex = -1;
-            if (intervalId) {
-                resetCanvas(true);
+            // Clear and re-run on removal
+            stopAutoIterate();
+            resetCanvas(true);
+            if (transformationRects.length > 0) {
+                runSingleIteration();
             }
+
             renderTransformationsUI();
             saveSettings();
         }
@@ -908,9 +979,11 @@
                 color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
             };
             transformationRects.push(newRect);
-            if (intervalId) {
-                resetCanvas(true);
-            }
+
+            stopAutoIterate();
+            resetCanvas(true);
+            runSingleIteration();
+
             renderTransformationsUI();
             setActiveTransform(transformationRects.length - 1);
             saveSettings();
@@ -929,6 +1002,7 @@
                     }
                 };
 
+                // The color logic for the P label: colored in color mode, grey in B&W mode.
                 const labelColor = isBNWTransformMode ? 'var(--text-secondary)' : rect.color;
 
                 const maxRangeX = CANVAS_SIZE - 10;
@@ -1043,6 +1117,7 @@
             });
 
             renderTransformationsUI();
+            resetCanvas(true);
             runSingleIteration(); // Re-run the fractal
             saveSettings();
         }
@@ -1169,7 +1244,7 @@
 
         canvasContainer.addEventListener('pointermove', (e) => {
             if (activeRectIndex === -1 || !dragMode) return;
-            // ... (pointermove logic remains the same) ...
+
             e.preventDefault();
             const canvasRect = canvas.getBoundingClientRect();
 
@@ -1220,9 +1295,15 @@
             rect.x = Math.max(-rect.width + 10, Math.min(rect.x, CANVAS_SIZE - 10));
             rect.y = Math.max(-rect.height + 10, Math.min(rect.y, CANVAS_SIZE - 10));
 
-            if (intervalId) {
-                resetCanvas(true);
+            // Do not clear the canvas if auto-iterate is running, as it will auto-update.
+            if (!intervalId) {
+                resetCanvas(true); // Clear and reset IFS state to force a complete re-run on drag
+                // Re-draw all points from scratch when dragging a transform
+                if (document.getElementById('iterateBtn').hasAttribute('data-ran-once')) {
+                    runSingleIteration();
+                }
             }
+
 
             renderTransformationsUI();
         });
@@ -1237,12 +1318,10 @@
 
         // Control Panel Event Listeners
         document.getElementById('addTransform').addEventListener('click', () => {
-            stopAutoIterate();
             addTransformUI();
         });
 
         document.getElementById('iterateBtn').addEventListener('click', () => {
-            stopAutoIterate();
             if (transformationRects.length === 0) {
                 alert("Please add or load a transformation set.");
                 return;
@@ -1253,20 +1332,21 @@
         document.getElementById('playPauseBtn').addEventListener('click', toggleAutoIterate);
         document.getElementById('canvasModeToggleBtn').addEventListener('click', toggleCanvasTheme);
         document.getElementById('bnwToggleBtn').addEventListener('click', toggleBNWTransforms);
-        document.getElementById('toggleRectsBtn').addEventListener('click', toggleShowTransforms); // NEW LISTENER
+        document.getElementById('toggleRectsBtn').addEventListener('click', toggleShowTransforms);
 
         document.getElementById('randomBtn').addEventListener('click', () => {
             stopAutoIterate();
             transformationRects = [];
             generateRandomIFS(Math.floor(Math.random() * 4) + 2);
             renderTransformationsUI();
+            resetCanvas(true);
             runSingleIteration();
             saveSettings();
         });
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             stopAutoIterate();
-            resetCanvas(true);
+            resetCanvas(true); // Resets canvas and persistent state
         });
 
         resetSettingsBtn.addEventListener('click', resetAllSettings);
