@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Attractor Theorem Fractal Generator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #controls {
+            width: 400px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #canvas-container {
+            position: relative;
+            border: 1px solid #ccc;
+            background: black;
+        }
+
+        #outputCanvas {
+            display: block;
+            background: #000;
+        }
+
+        .transform-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .transform-item h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        input[type="number"],
+        input[type="range"] {
+            width: 80px;
+            margin-right: 5px;
+        }
+
+        button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+
+        #addTransform {
+            background-color: #4CAF50;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        #iterateBtn {
+            background-color: #2196F3;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #resetBtn {
+            background-color: #f44336;
+            color: white;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .range-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Visual Transform Handles */
+        .transform-overlay {
+            position: absolute;
+            border: 1px dashed white;
+            /* Visible outline for selection */
+            box-sizing: border-box;
+            cursor: grab;
+            touch-action: none;
+            /* Disable default touch actions */
+        }
+
+        .transform-overlay.selected {
+            border: 1px solid yellow;
+            z-index: 100;
+        }
+
+        .handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 1px solid black;
+            border-radius: 50%;
+            touch-action: none;
+        }
+
+        .handle.corner {
+            cursor: nwse-resize;
+            /* Diagonal resize */
+        }
+
+        .handle.rotate {
+            background: orange;
+            cursor: grab;
+            /* Rotation cursor */
+            top: -20px;
+            /* Position above the rectangle */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="controls">
+        <h2>Visual IFS Generator 🚀</h2>
+        <p>Visually define **affine transformations** using draggable/resizable/rotatable rectangles. Each rectangle is
+            a **contraction map**.</p>
+
+        <div id="transformationsList">
+        </div>
+
+        <button id="addTransform">+ Add Transformation Rectangle</button>
+        <div class="flex-row">
+            <label>Iterations: <input type="number" id="numIterations" value="20000" min="1000"></label>
+            <label>Opacity: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0" step="0.01"></label>
+        </div>
+        <button id="iterateBtn">Run Iteration Step</button>
+        <button id="resetBtn">Reset Canvas & Transforms</button>
+
+        <hr>
+        <h3>How it works:</h3>
+        <ul>
+            <li>**Drag** the center of a rectangle to move it (Translation).</li>
+            <li>**Drag corners** to resize (Scaling).</li>
+            <li>**Drag the orange handle** to rotate (Rotation).</li>
+            <li>The **Attractor Theorem** guarantees the points will converge to a unique fractal shape, the
+                **attractor**.</li>
+        </ul>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="outputCanvas" width="600" height="600"></canvas>
+    </div>
+
+    <script>
+        const CANVAS_SIZE = 600;
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
+        const transformationsList = document.getElementById('transformationsList');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        let transformationRects = [];
+        let points = [];
+        let activeRect = null;
+        let dragMode = null;
+        let dragStartX, dragStartY;
+        let initialRectState;
+
+        // --- Core Fractal Functions ---
+
+        /**
+         * @brief Converts a rectangle's state (x,y,w,h,rot) into an affine transformation matrix (a,b,c,d,e,f).
+         * This matrix defines w(x, y) = A * [x, y] + t, where [x,y] is a point in the canonical fractal space [-2, 2].
+         */
+        function getAffineMatrixFromRect(rect) {
+            // 1. Scale factors relative to full canvas size (which maps to [-2, 2] fractal space)
+            const scaleX = rect.width / CANVAS_SIZE;
+            const scaleY = rect.height / CANVAS_SIZE;
+
+            // 2. Rotation
+            const cosRot = Math.cos(rect.rotation);
+            const sinRot = Math.sin(rect.rotation);
+
+            // 3. Affine components (A, B, C, D) for scaling and rotation
+            const A = scaleX * cosRot;
+            const B = -scaleY * sinRot; // Note: -sin is used due to canvas Y-axis being inverted
+            const C = scaleX * sinRot;
+            const D = scaleY * cosRot;
+
+            // 4. Translation components (E, F)
+            // Normalize the rectangle's center (in canvas pixels) back to the canonical fractal space [-2, 2]
+            const normRectCenterX = (rect.x + rect.width / 2 - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
+            const normRectCenterY = (rect.y + rect.height / 2 - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
+
+            const E = normRectCenterX;
+            const F = normRectCenterY;
+
+            return { a: A, b: B, c: C, d: D, e: E, f: F };
+        }
+
+
+        /**
+         * @brief Applies the affine transformation w(x, y) = [a*x + b*y + e, c*x + d*y + f]
+         */
+        function applyIFSMapping(transform, x, y) {
+            const { a, b, c, d, e, f } = transform;
+            return {
+                x: a * x + b * y + e,
+                y: c * x + d * y + f
+            };
+        }
+
+        /**
+         * @brief The Random Iteration Algorithm (Chaos Game) to generate new points.
+         */
+        function runIFS(numPoints) {
+            let currentX = 0; // Starting point for IFS (center of fractal space)
+            let currentY = 0;
+            const newPoints = [];
+
+            const BURN_IN = 20;
+
+            if (transformationRects.length === 0) return [];
+
+            // Convert rects to affine matrices with probabilities
+            const mappings = transformationRects.map(rect => ({
+                matrix: getAffineMatrixFromRect(rect),
+                p: rect.p,
+                color: rect.color
+            }));
+
+            // Pre-calculate cumulative probabilities
+            let totalProb = mappings.reduce((sum, m) => sum + m.p, 0);
+            if (totalProb === 0) return [];
+
+            const cumulativeProbs = [];
+            let currentSum = 0;
+            for (let m of mappings) {
+                currentSum += m.p / totalProb;
+                cumulativeProbs.push(currentSum);
+            }
+
+            for (let i = 0; i < numPoints + BURN_IN; i++) {
+                const r = Math.random();
+                let selectedMapping = null;
+                for (let j = 0; j < mappings.length; j++) {
+                    if (r < cumulativeProbs[j]) {
+                        selectedMapping = mappings[j];
+                        break;
+                    }
+                }
+
+                if (!selectedMapping) {
+                    selectedMapping = mappings[0];
+                }
+
+                const nextPoint = applyIFSMapping(selectedMapping.matrix, currentX, currentY);
+                currentX = nextPoint.x;
+                currentY = nextPoint.y;
+
+                if (i >= BURN_IN) {
+                    newPoints.push({ x: currentX, y: currentY, color: selectedMapping.color });
+                }
+            }
+            return newPoints;
+        }
+
+        /**
+         * @brief Maps the fractal coordinates (typically [-2, 2]) to canvas pixels [0, 600].
+         */
+        function mapToCanvas(coord) {
+            const scale = CANVAS_SIZE / 4;
+            const offset = CANVAS_SIZE / 2;
+            return coord * scale + offset;
+        }
+
+        /**
+         * @brief Draws the generated points onto the canvas with lowered opacity and overlap.
+         */
+        function drawPoints(newPoints, alpha) {
+            ctx.globalAlpha = alpha;
+            newPoints.forEach(point => {
+                const px = mapToCanvas(point.x);
+                const py = mapToCanvas(point.y);
+                ctx.fillStyle = point.color;
+                ctx.fillRect(px, py, 1, 1);
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        // --- UI and Control Functions ---
+
+        function addTransformUI(initialData = null) {
+            const newRect = initialData || {
+                x: 100, y: 100, width: 200, height: 150, rotation: 0, p: 1 / (transformationRects.length + 1),
+                color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+            };
+            transformationRects.push(newRect);
+            renderTransformationsUI();
+        }
+
+        function updateTransformRect(index, key, value) {
+            const val = (key === 'color') ? value : parseFloat(value);
+            if (isNaN(val) && key !== 'color') return;
+            transformationRects[index][key] = val;
+
+            // Re-render UI and overlays to show changes
+            renderTransformationsUI();
+            drawOverlays();
+        }
+
+        function removeTransformRect(index) {
+            transformationRects.splice(index, 1);
+            renderTransformationsUI();
+            drawOverlays();
+            if (activeRect && activeRect.index === index) {
+                activeRect = null;
+            }
+        }
+
+        function renderTransformationsUI() {
+            transformationsList.innerHTML = '';
+            transformationRects.forEach((rect, index) => {
+                const div = document.createElement('div');
+                div.className = 'transform-item';
+                div.dataset.index = index;
+                div.classList.toggle('selected', activeRect && activeRect.index === index);
+                div.innerHTML = `
+                    <h4>
+                        Transform ${index + 1} 
+                        <button onclick="removeTransformRect(${index})" style="background-color: #f44336; color: white;">Remove</button>
+                    </h4>
+                    <div class="flex-row">
+                        <label>P (Weight): <input type="number" step="0.01" value="${rect.p}" onchange="updateTransformRect(${index}, 'p', this.value)" style="width: 50px;"></label>
+                        <label>Color: <input type="color" value="${rect.color}" onchange="updateTransformRect(${index}, 'color', this.value)" style="width: 50px;"></label>
+                    </div>
+                    <div class="flex-row">
+                        <label class="range-label">X: <input type="range" name="x" min="0" max="${CANVAS_SIZE - rect.width}" value="${rect.x}" oninput="updateTransformRect(${index}, 'x', this.value)" style="width: 80px;"> <span>${Math.round(rect.x)}</span></label>
+                        <label class="range-label">Y: <input type="range" name="y" min="0" max="${CANVAS_SIZE - rect.height}" value="${rect.y}" oninput="updateTransformRect(${index}, 'y', this.value)" style="width: 80px;"> <span>${Math.round(rect.y)}</span></label>
+                    </div>
+                    <div class="flex-row">
+                        <label class="range-label">W: <input type="range" name="width" min="10" max="${CANVAS_SIZE}" value="${rect.width}" oninput="updateTransformRect(${index}, 'width', this.value)" style="width: 80px;"> <span>${Math.round(rect.width)}</span></label>
+                        <label class="range-label">H: <input type="range" name="height" min="10" max="${CANVAS_SIZE}" value="${rect.height}" oninput="updateTransformRect(${index}, 'height', this.value)" style="width: 80px;"> <span>${Math.round(rect.height)}</span></label>
+                    </div>
+                    <div class="flex-row">
+                        <label class="range-label">Rot: <input type="range" name="rotation" min="-3.14" max="3.14" step="0.01" value="${rect.rotation}" oninput="updateTransformRect(${index}, 'rotation', this.value)" style="width: 80px;"> <span>${(rect.rotation * 180 / Math.PI).toFixed(1)}°</span></label>
+                    </div>
+                `;
+                transformationsList.appendChild(div);
+            });
+            drawOverlays();
+        }
+
+        function resetCanvas() {
+            ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            points = [];
+        }
+
+        function initialNoise(density = 100000) { // Increased density (from 50k to 100k)
+            resetCanvas();
+            const initialPoints = [];
+            for (let i = 0; i < density; i++) {
+                const x = Math.random() * 4 - 2; // Canonical fractal space [-2, 2]
+                const y = Math.random() * 4 - 2;
+                const color = `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`;
+                initialPoints.push({ x, y, color });
+            }
+            drawPoints(initialPoints, 0.2);
+        }
+
+        // --- Visual Editor (Overlays) ---
+
+        function drawOverlays() {
+            // Remove existing overlays
+            document.querySelectorAll('.transform-overlay').forEach(el => el.remove());
+
+            transformationRects.forEach((rect, index) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'transform-overlay';
+                overlay.dataset.index = index;
+                overlay.style.width = `${rect.width}px`;
+                overlay.style.height = `${rect.height}px`;
+                overlay.style.left = `${rect.x}px`;
+                overlay.style.top = `${rect.y}px`;
+                overlay.style.transform = `rotate(${rect.rotation}rad)`;
+                overlay.style.borderColor = rect.color;
+
+                if (activeRect && activeRect.index === index) {
+                    overlay.classList.add('selected');
+                }
+
+                // Add corner handles
+                const handles = [
+                    { class: 'corner tl', x: 0, y: 0 },
+                    { class: 'corner tr', x: rect.width, y: 0 },
+                    { class: 'corner bl', x: 0, y: rect.height },
+                    { class: 'corner br', x: rect.width, y: rect.height }
+                ];
+
+                handles.forEach(h => {
+                    const handle = document.createElement('div');
+                    handle.className = `handle ${h.class}`;
+                    handle.style.left = `${h.x - 5}px`;
+                    handle.style.top = `${h.y - 5}px`;
+                    overlay.appendChild(handle);
+                });
+
+                // Rotation handle
+                const rotateHandle = document.createElement('div');
+                rotateHandle.className = 'handle rotate';
+                overlay.appendChild(rotateHandle);
+
+                canvasContainer.appendChild(overlay);
+            });
+        }
+
+        // --- Mouse/Touch Interaction for Overlays ---
+
+        canvasContainer.addEventListener('pointerdown', (e) => {
+            const target = e.target;
+            const overlay = target.closest('.transform-overlay');
+
+            if (overlay) {
+                e.preventDefault();
+                const index = parseInt(overlay.dataset.index);
+                activeRect = { ...transformationRects[index], index: index };
+
+                // Update UI selection
+                document.querySelectorAll('.transform-item').forEach(el => el.classList.remove('selected'));
+                document.querySelector(`.transform-item[data-index="${index}"]`).classList.add('selected');
+                document.querySelectorAll('.transform-overlay').forEach(el => el.classList.remove('selected'));
+                overlay.classList.add('selected');
+
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                initialRectState = { ...activeRect };
+
+                if (target.classList.contains('handle')) {
+                    if (target.classList.contains('rotate')) {
+                        dragMode = 'rotate';
+                    } else if (target.classList.contains('tl')) { dragMode = 'resize-tl'; }
+                    else if (target.classList.contains('tr')) { dragMode = 'resize-tr'; }
+                    else if (target.classList.contains('bl')) { dragMode = 'resize-bl'; }
+                    else if (target.classList.contains('br')) { dragMode = 'resize-br'; }
+                } else {
+                    dragMode = 'move';
+                }
+            } else {
+                activeRect = null;
+                document.querySelectorAll('.transform-item').forEach(el => el.classList.remove('selected'));
+                document.querySelectorAll('.transform-overlay').forEach(el => el.classList.remove('selected'));
+            }
+        });
+
+        canvasContainer.addEventListener('pointermove', (e) => {
+            if (!activeRect || !dragMode) return;
+
+            e.preventDefault();
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            const rect = transformationRects[activeRect.index];
+
+            switch (dragMode) {
+                case 'move':
+                    rect.x = initialRectState.x + dx;
+                    rect.y = initialRectState.y + dy;
+                    break;
+                case 'resize-tl':
+                    rect.x = initialRectState.x + dx;
+                    rect.y = initialRectState.y + dy;
+                    rect.width = initialRectState.width - dx;
+                    rect.height = initialRectState.height - dy;
+                    break;
+                case 'resize-tr':
+                    rect.y = initialRectState.y + dy;
+                    rect.width = initialRectState.width + dx;
+                    rect.height = initialRectState.height - dy;
+                    break;
+                case 'resize-bl':
+                    rect.x = initialRectState.x + dx;
+                    rect.width = initialRectState.width - dx;
+                    rect.height = initialRectState.height + dy;
+                    break;
+                case 'resize-br':
+                    rect.width = initialRectState.width + dx;
+                    rect.height = initialRectState.height + dy;
+                    break;
+                case 'rotate':
+                    const rectCenterX = initialRectState.x + initialRectState.width / 2;
+                    const rectCenterY = initialRectState.y + initialRectState.height / 2;
+                    const initialAngle = Math.atan2(dragStartY - rectCenterY, dragStartX - rectCenterX);
+                    const currentAngle = Math.atan2(e.clientY - rectCenterY, e.clientX - rectCenterX);
+                    rect.rotation = initialRectState.rotation + (currentAngle - initialAngle);
+                    break;
+            }
+
+            // Ensure minimum dimensions
+            rect.width = Math.max(10, rect.width);
+            rect.height = Math.max(10, rect.height);
+
+            // Update UI sliders and text to reflect visual drag (a bit verbose, but necessary for two-way binding)
+            const uiDiv = document.querySelector(`.transform-item[data-index="${activeRect.index}"]`);
+            if (uiDiv) {
+                // Update range inputs and spans based on name attribute (used instead of nth-of-type for robustness)
+                uiDiv.querySelector('input[name="x"]').value = rect.x;
+                uiDiv.querySelector('input[name="x"]').nextElementSibling.textContent = Math.round(rect.x);
+                uiDiv.querySelector('input[name="y"]').value = rect.y;
+                uiDiv.querySelector('input[name="y"]').nextElementSibling.textContent = Math.round(rect.y);
+                uiDiv.querySelector('input[name="width"]').value = rect.width;
+                uiDiv.querySelector('input[name="width"]').nextElementSibling.textContent = Math.round(rect.width);
+                uiDiv.querySelector('input[name="height"]').value = rect.height;
+                uiDiv.querySelector('input[name="height"]').nextElementSibling.textContent = Math.round(rect.height);
+                uiDiv.querySelector('input[name="rotation"]').value = rect.rotation;
+                uiDiv.querySelector('input[name="rotation"]').nextElementSibling.textContent = `${(rect.rotation * 180 / Math.PI).toFixed(1)}°`;
+            }
+
+            drawOverlays();
+        });
+
+        canvasContainer.addEventListener('pointerup', () => {
+            dragMode = null;
+            // The `transformationRects` array is updated directly during pointermove
+            // No need to clear activeRect yet, as we want the UI to stay selected.
+            renderTransformationsUI(); // Re-render to ensure final state is reflected and max/min are correct
+        });
+
+
+        // --- Main Execution Logic ---
+        document.getElementById('addTransform').addEventListener('click', () => {
+            addTransformUI();
+        });
+
+        document.getElementById('iterateBtn').addEventListener('click', () => {
+            if (transformationRects.length === 0) {
+                alert("Please add at least one transformation rectangle.");
+                return;
+            }
+
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+
+            // Generate new points
+            const newPoints = runIFS(numIter);
+
+            // Overlap with lowered opacity
+            drawPoints(newPoints, alpha);
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            // Reset transforms array and redraw UI/Noise
+            transformationRects = [];
+            renderTransformationsUI();
+            initialNoise();
+        });
+
+        // Initial setup
+        initialNoise();
+
+        // Load two simple contractions for a default fractal (Sierpinski style)
+        addTransformUI({ x: 0, y: 0, width: 300, height: 300, rotation: 0, p: 0.5, color: 'yellow' });
+        addTransformUI({ x: 300, y: 300, width: 300, height: 300, rotation: 0, p: 0.5, color: 'cyan' });
+
+    </script>
+
+</body>
+
+</html>
