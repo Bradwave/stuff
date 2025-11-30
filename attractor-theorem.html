@@ -11,7 +11,6 @@
     <style>
         /* --- 1. Global & Layout Styling (EFIELD-Inspired) --- */
         :root {
-            /* Palette inspired by EFIELD CSS (dark text on light background, red accent) */
             --bg-body: #fdfdfd;
             --bg-panel: #f8f8f8;
             --text-primary: #222;
@@ -21,6 +20,7 @@
             --border-color: #ccc;
             --spacing: 12px;
             --radius: 6px;
+            --canvas-margin: 20px;
         }
 
         body {
@@ -69,24 +69,31 @@
             font-size: 0.9em;
         }
 
-        /* --- 3. Canvas Area --- */
+        /* --- 3. Canvas Area & Toggleable Canvas Mode --- */
         #canvas-container {
             flex-grow: 1;
+            /* Ensures canvas takes up max horizontal space */
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            padding: 1px;
-            /* Minimal padding for border visibility */
+            padding: var(--canvas-margin);
         }
 
         #outputCanvas {
             display: block;
             background: #000;
+            /* Default Dark Mode */
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
+        }
+
+        /* Light Canvas Mode */
+        body.light-canvas-mode #outputCanvas {
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
         }
 
         /* --- 4. Inputs and Buttons --- */
@@ -126,6 +133,15 @@
             border-bottom-color: var(--accent-red);
         }
 
+        select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-sizing: border-box;
+            margin-bottom: 5px;
+        }
+
         input[type="range"] {
             -webkit-appearance: none;
             appearance: none;
@@ -153,8 +169,8 @@
 
         .action-buttons {
             display: flex;
-            gap: var(--spacing);
-            margin-bottom: var(--spacing);
+            gap: 10px;
+            margin-bottom: 6px;
         }
 
         .action-buttons button {
@@ -192,7 +208,7 @@
             border-radius: var(--radius);
             background: var(--bg-body);
             cursor: pointer;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, padding 0.2s;
         }
 
         .transform-item h4 {
@@ -203,10 +219,11 @@
             font-size: 1em;
         }
 
+        /* Dark red bold outline for selected item */
         .transform-item.selected {
-            border-color: var(--accent-red);
-            background-color: #fff0f0;
-            /* Light red/pink hint */
+            border: 2px solid var(--accent-red);
+            background: var(--bg-body);
+            padding: 9px;
         }
 
         .transform-params {
@@ -240,44 +257,60 @@
             color: var(--accent-red);
         }
 
-        /* --- 6. Visual Editor Handles (Corrected Positioning Logic) --- */
+        /* --- 6. Visual Editor Handles --- */
         .transform-overlay {
             position: absolute;
             box-sizing: border-box;
             cursor: grab;
             touch-action: none;
-            /* Positioning is now handled ONLY by JS to match canvas position */
-            top: 50%;
-            left: 50%;
-            transform-origin: center center;
-            border: 1px dashed white;
-            /* Default visibility */
+            transform-origin: 0 0;
+            border: none;
         }
 
         .transform-overlay.selected {
-            border: 1px solid yellow;
             z-index: 100;
         }
 
+        /* Default Handle (Corner: Hollow Red Circle for Resize) */
         .handle {
             position: absolute;
             width: 12px;
             height: 12px;
             background: white;
             border: 2px solid var(--accent-red);
+            /* Hollow appearance */
             border-radius: 50%;
             touch-action: none;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
             margin: -6px;
-            /* Offset to center the handle */
+            z-index: 101;
         }
 
+        /* Cursors to indicate corner functionality */
+        .handle.tl {
+            cursor: nwse-resize;
+        }
+
+        .handle.tr {
+            cursor: nesw-resize;
+        }
+
+        .handle.bl {
+            cursor: nesw-resize;
+        }
+
+        .handle.br {
+            cursor: nwse-resize;
+        }
+
+        /* Rotation Handle (Filled Red Circle, outside the rectangle) */
         .handle.rotate {
             background: var(--accent-red);
-            cursor: move;
+            cursor: grab;
             top: -30px;
             left: 50%;
             margin: -6px 0 0 -6px;
+            border: none;
         }
     </style>
 </head>
@@ -287,6 +320,41 @@
     <div id="controls">
         <h2>IFS Attractor Generator</h2>
 
+        <fieldset>
+            <legend>Iteration Parameters</legend>
+            <div class="flex-row" style="margin-bottom: 10px;">
+                <label>Points: <input type="number" id="numIterations" value="20000" min="1000"></label>
+                <label>Alpha: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0"
+                        step="0.01"></label>
+            </div>
+
+            <div class="action-buttons">
+                <button id="iterateBtn">
+                    <span class="material-icons-round">play_arrow</span>
+                    Run Step
+                </button>
+                <button id="playPauseBtn">
+                    <span class="material-icons-round">play_circle</span>
+                    Auto-Iterate
+                </button>
+            </div>
+            <div class="action-buttons">
+                <button id="canvasModeToggleBtn" style="background-color: #5b5b5b;">
+                    <span class="material-icons-round">light_mode</span>
+                    Light Canvas
+                </button>
+            </div>
+            <div class="action-buttons">
+                <button id="randomBtn">
+                    <span class="material-icons-round">casino</span>
+                    Randomize All
+                </button>
+                <button id="resetBtn">
+                    <span class="material-icons-round">delete_sweep</span>
+                    Clear Canvas
+                </button>
+            </div>
+        </fieldset>
         <fieldset id="presets">
             <legend>Load Preset IFS</legend>
             <select id="presetSelect">
@@ -312,36 +380,6 @@
                 Add New Transform
             </button>
         </fieldset>
-
-        <fieldset>
-            <legend>Iteration Parameters</legend>
-            <div class="flex-row" style="margin-bottom: 10px;">
-                <label>Points: <input type="number" id="numIterations" value="20000" min="1000"></label>
-                <label>Alpha: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0"
-                        step="0.01"></label>
-            </div>
-
-            <div class="action-buttons">
-                <button id="iterateBtn">
-                    <span class="material-icons-round">play_arrow</span>
-                    Run Step
-                </button>
-                <button id="playPauseBtn">
-                    <span class="material-icons-round">play_circle</span>
-                    Auto-Iterate
-                </button>
-            </div>
-            <div class="action-buttons">
-                <button id="randomBtn">
-                    <span class="material-icons-round">casino</span>
-                    Randomize All
-                </button>
-                <button id="resetBtn">
-                    <span class="material-icons-round">delete_sweep</span>
-                    Clear Canvas
-                </button>
-            </div>
-        </fieldset>
     </div>
 
     <div id="canvas-container">
@@ -349,22 +387,23 @@
     </div>
 
     <script>
+        // --- 1. Global Variables & Initialization ---
         let CANVAS_SIZE = 600;
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
         const transformationsList = document.getElementById('transformationsList');
         const canvasContainer = document.getElementById('canvas-container');
         const playPauseBtn = document.getElementById('playPauseBtn');
+        const canvasModeToggleBtn = document.getElementById('canvasModeToggleBtn');
 
         let transformationRects = [];
         let activeRectIndex = -1;
         let intervalId = null;
+        let isCanvasLightMode = false;
 
         let dragMode = null;
         let dragStartX, dragStartY;
         let initialRectState;
-
-        // --- Presets Data (Original 600x600 coordinates) ---
 
         const IFS_PRESETS = {
             barnsley: [
@@ -394,7 +433,7 @@
             ]
         };
 
-        // --- Core Fractal Functions (Unchanged Math) ---
+        // --- 2. Core Fractal Functions ---
 
         function getAffineMatrixFromRect(rect) {
             const scaleX = rect.width / CANVAS_SIZE;
@@ -487,18 +526,160 @@
             ctx.globalAlpha = 1.0;
         }
 
-        // --- UI and Control Functions ---
+        // --- 3. UI and Control Functions ---
 
-        /**
-         * @brief Makes the canvas fill the maximum available square space.
-         * Corrected: Padding removal from calculation.
-         */
+        function stopAutoIterate() {
+            clearInterval(intervalId);
+            intervalId = null;
+            playPauseBtn.innerHTML = '<span class="material-icons-round">play_circle</span>Auto-Iterate';
+            playPauseBtn.classList.remove('playing');
+        }
+
+        function startAutoIterate() {
+            if (transformationRects.length === 0) {
+                alert("Add or load a transformation set first.");
+                return;
+            }
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+
+            const iterateStep = () => {
+                const newPoints = runIFS(numIter);
+                drawPoints(newPoints, alpha);
+            };
+
+            iterateStep();
+            intervalId = setInterval(iterateStep, 100);
+            playPauseBtn.innerHTML = '<span class="material-icons-round">pause_circle</span>Pause Auto-Iterate';
+            playPauseBtn.classList.add('playing');
+        }
+
+        // FIX: Defined function for event listener
+        function toggleAutoIterate() {
+            if (intervalId) {
+                stopAutoIterate();
+            } else {
+                startAutoIterate();
+            }
+        }
+
+        function resetCanvas(clearOnly = true) {
+            ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            ctx.fillStyle = isCanvasLightMode ? '#fff' : '#000';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        }
+
+        function toggleCanvasTheme() {
+            isCanvasLightMode = !isCanvasLightMode;
+            document.body.classList.toggle('light-canvas-mode', isCanvasLightMode);
+
+            canvasModeToggleBtn.innerHTML = isCanvasLightMode
+                ? '<span class="material-icons-round">dark_mode</span>Dark Canvas'
+                : '<span class="material-icons-round">light_mode</span>Light Canvas';
+
+            resetCanvas(true);
+        }
+
+        function setActiveTransform(index) {
+            activeRectIndex = index;
+            renderTransformationsUI();
+        }
+
+        function updateTransformRect(index, key, value) {
+            const val = (key === 'color') ? value : parseFloat(value);
+            if (isNaN(val) && key !== 'color') return;
+            transformationRects[index][key] = val;
+
+            if (key === 'width' || key === 'height') {
+                renderTransformationsUI();
+            } else {
+                drawOverlays();
+                const item = document.querySelector(`.transform-item[data-index="${index}"]`);
+                if (item && item.querySelector(`input[name="${key}"][type="range"]`)) {
+                    const span = item.querySelector(`input[name="${key}"]`).closest('.range-label').querySelector('span');
+                    if (span) {
+                        span.textContent = key === 'rotation' ? `${(val * 180 / Math.PI).toFixed(1)}°` : `${Math.round(val)}`;
+                    }
+                }
+            }
+        }
+
+        function removeTransformRect(index) {
+            transformationRects.splice(index, 1);
+            activeRectIndex = -1;
+            renderTransformationsUI();
+        }
+
+        // FIX: Defined function for event listener
+        function addTransformUI(initialData = null) {
+            const newRect = initialData || {
+                x: CANVAS_SIZE * 0.25, y: CANVAS_SIZE * 0.25, width: CANVAS_SIZE * 0.5, height: CANVAS_SIZE * 0.5, rotation: 0, p: 1 / (transformationRects.length + 1 || 1),
+                color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+            };
+            transformationRects.push(newRect);
+            renderTransformationsUI();
+            setActiveTransform(transformationRects.length - 1);
+        }
+
+        function renderTransformationsUI() {
+            transformationsList.innerHTML = '';
+            transformationRects.forEach((rect, index) => {
+                const div = document.createElement('div');
+                div.className = 'transform-item';
+                div.dataset.index = index;
+                div.classList.toggle('selected', index === activeRectIndex);
+                div.onclick = (e) => {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON') {
+                        setActiveTransform(index);
+                    }
+                };
+
+                const maxRangeX = CANVAS_SIZE - rect.width;
+                const maxRangeY = CANVAS_SIZE - rect.height;
+                const currentRotDeg = (rect.rotation * 180 / Math.PI).toFixed(1);
+
+                div.innerHTML = `
+                    <h4>
+                        Map ${index + 1} <span style="color:${rect.color}; font-weight:400;">(P=${(rect.p).toFixed(3)})</span>
+                        <button onclick="event.stopPropagation(); removeTransformRect(${index})" 
+                                style="background-color: #555; padding: 5px 10px; font-size: 0.8em;">
+                            <span class="material-icons-round" style="font-size:1em;">close</span>
+                        </button>
+                    </h4>
+                    <div class="transform-params">
+                        <div class="flex-row">
+                            <label>P (Weight): <input type="number" step="0.01" value="${rect.p}" onchange="updateTransformRect(${index}, 'p', this.value)" style="width: 50px;"></label>
+                            <label>Color: <input type="color" value="${rect.color}" onchange="updateTransformRect(${index}, 'color', this.value)" style="width: 50px;"></label>
+                        </div>
+                        <div class="flex-row">
+                            <label class="range-label">X: <input type="range" name="x" min="0" max="${maxRangeX}" value="${rect.x}" oninput="updateTransformRect(${index}, 'x', this.value)" style="width: 80px;"> <span>${Math.round(rect.x)}</span></label>
+                            <label class="range-label">Y: <input type="range" name="y" min="0" max="${maxRangeY}" value="${rect.y}" oninput="updateTransformRect(${index}, 'y', this.value)" style="width: 80px;"> <span>${Math.round(rect.y)}</span></label>
+                        </div>
+                        <div class="flex-row">
+                            <label class="range-label">W: <input type="range" name="width" min="10" max="${CANVAS_SIZE}" value="${rect.width}" oninput="updateTransformRect(${index}, 'width', this.value)" style="width: 80px;"> <span>${Math.round(rect.width)}</span></label>
+                            <label class="range-label">H: <input type="range" name="height" min="10" max="${CANVAS_SIZE}" value="${rect.height}" oninput="updateTransformRect(${index}, 'height', this.value)" style="width: 80px;"> <span>${Math.round(rect.height)}</span></label>
+                        </div>
+                        <div class="flex-row">
+                            <label class="range-label">Rot: <input type="range" name="rotation" min="-3.141" max="3.141" step="0.001" value="${rect.rotation}" oninput="updateTransformRect(${index}, 'rotation', this.value)" style="width: 80px;"> <span>${currentRotDeg}°</span></label>
+                        </div>
+                    </div>
+                `;
+                transformationsList.appendChild(div);
+            });
+            drawOverlays();
+        }
+
         function setCanvasSize() {
             stopAutoIterate();
 
             const containerRect = canvasContainer.getBoundingClientRect();
-            // Container has 1px border. We take the smallest dimension for a square.
-            const size = Math.floor(Math.min(containerRect.width, containerRect.height) - 2);
+            const style = getComputedStyle(canvasContainer);
+            const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+
+            const availableWidth = containerRect.width - paddingX;
+            const availableHeight = containerRect.height - paddingY;
+            const size = Math.floor(Math.min(availableWidth, availableHeight));
 
             if (canvas.width !== size && CANVAS_SIZE > 0) {
                 const scaleFactor = size / CANVAS_SIZE;
@@ -515,83 +696,23 @@
             canvas.width = size;
             canvas.height = size;
 
-            initialNoise(150000);
+            resetCanvas(true);
             renderTransformationsUI();
         }
 
-        function addTransformUI(initialData = null) {
-            const newRect = initialData || {
-                x: CANVAS_SIZE * 0.25, y: CANVAS_SIZE * 0.25, width: CANVAS_SIZE * 0.5, height: CANVAS_SIZE * 0.5, rotation: 0, p: 1 / (transformationRects.length + 1 || 1),
-                color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
-            };
-            transformationRects.push(newRect);
-            renderTransformationsUI();
-            setActiveTransform(transformationRects.length - 1);
-        }
-
-        function updateTransformRect(index, key, value) {
-            const val = (key === 'color') ? value : parseFloat(value);
-            if (isNaN(val) && key !== 'color') return;
-            transformationRects[index][key] = val;
-
-            renderTransformationsUI();
-            drawOverlays();
-        }
-
-        function removeTransformRect(index) {
-            transformationRects.splice(index, 1);
-            activeRectIndex = -1;
-            renderTransformationsUI();
-            drawOverlays();
-        }
-
-        function setActiveTransform(index) {
-            activeRectIndex = index;
-            renderTransformationsUI();
-            drawOverlays();
-        }
-
-        function renderTransformationsUI() {
-            transformationsList.innerHTML = '';
-            transformationRects.forEach((rect, index) => {
-                const div = document.createElement('div');
-                div.className = 'transform-item';
-                div.dataset.index = index;
-                div.classList.toggle('selected', index === activeRectIndex);
-                div.onclick = () => setActiveTransform(index);
-
-                const maxRange = CANVAS_SIZE - rect.width;
-                const maxRangeH = CANVAS_SIZE - rect.height;
-
-                div.innerHTML = `
-                    <h4>
-                        Map ${index + 1} <span style="color:${rect.color}; font-weight:400;">(P=${(rect.p).toFixed(3)})</span>
-                        <button onclick="event.stopPropagation(); removeTransformRect(${index})" 
-                                style="background-color: #555; padding: 5px 10px; font-size: 0.8em;">
-                            <span class="material-icons-round" style="font-size:1em;">close</span>
-                        </button>
-                    </h4>
-                    <div class="transform-params">
-                        <div class="flex-row">
-                            <label>P (Weight): <input type="number" step="0.01" value="${rect.p}" onchange="updateTransformRect(${index}, 'p', this.value)" style="width: 50px;"></label>
-                            <label>Color: <input type="color" value="${rect.color}" onchange="updateTransformRect(${index}, 'color', this.value)" style="width: 50px;"></label>
-                        </div>
-                        <div class="flex-row">
-                            <label class="range-label">X: <input type="range" name="x" min="0" max="${maxRange}" value="${rect.x}" oninput="updateTransformRect(${index}, 'x', this.value)" style="width: 80px;"> <span>${Math.round(rect.x)}</span></label>
-                            <label class="range-label">Y: <input type="range" name="y" min="0" max="${maxRangeH}" value="${rect.y}" oninput="updateTransformRect(${index}, 'y', this.value)" style="width: 80px;"> <span>${Math.round(rect.y)}</span></label>
-                        </div>
-                        <div class="flex-row">
-                            <label class="range-label">W: <input type="range" name="width" min="10" max="${CANVAS_SIZE}" value="${rect.width}" oninput="updateTransformRect(${index}, 'width', this.value)" style="width: 80px;"> <span>${Math.round(rect.width)}</span></label>
-                            <label class="range-label">H: <input type="range" name="height" min="10" max="${CANVAS_SIZE}" value="${rect.height}" oninput="updateTransformRect(${index}, 'height', this.value)" style="width: 80px;"> <span>${Math.round(rect.height)}</span></label>
-                        </div>
-                        <div class="flex-row">
-                            <label class="range-label">Rot: <input type="range" name="rotation" min="-3.141" max="3.141" step="0.001" value="${rect.rotation}" oninput="updateTransformRect(${index}, 'rotation', this.value)" style="width: 80px;"> <span>${(rect.rotation * 180 / Math.PI).toFixed(1)}°</span></label>
-                        </div>
-                    </div>
-                `;
-                transformationsList.appendChild(div);
-            });
-            drawOverlays();
+        function generateRandomIFS(count) {
+            for (let i = 0; i < count; i++) {
+                const randomRect = {
+                    x: Math.random() * (CANVAS_SIZE * 0.5) + (CANVAS_SIZE * 0.1),
+                    y: Math.random() * (CANVAS_SIZE * 0.5) + (CANVAS_SIZE * 0.1),
+                    width: Math.random() * (CANVAS_SIZE * 0.3) + (CANVAS_SIZE * 0.05),
+                    height: Math.random() * (CANVAS_SIZE * 0.3) + (CANVAS_SIZE * 0.05),
+                    rotation: Math.random() * 2 * Math.PI,
+                    p: 1 / count,
+                    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+                };
+                transformationRects.push(randomRect);
+            }
         }
 
         function loadPreset() {
@@ -618,62 +739,22 @@
             });
 
             renderTransformationsUI();
-            initialNoise(150000);
-        }
-
-        function generateRandomIFS(count) {
-            for (let i = 0; i < count; i++) {
-                const randomRect = {
-                    x: Math.random() * (CANVAS_SIZE * 0.5) + (CANVAS_SIZE * 0.1),
-                    y: Math.random() * (CANVAS_SIZE * 0.5) + (CANVAS_SIZE * 0.1),
-                    width: Math.random() * (CANVAS_SIZE * 0.3) + (CANVAS_SIZE * 0.05),
-                    height: Math.random() * (CANVAS_SIZE * 0.3) + (CANVAS_SIZE * 0.05),
-                    rotation: Math.random() * 2 * Math.PI,
-                    p: 1 / count,
-                    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
-                };
-                transformationRects.push(randomRect);
-            }
-        }
-
-        function toggleAutoIterate() {
-            if (intervalId) {
-                stopAutoIterate();
-            } else {
-                startAutoIterate();
-            }
-        }
-
-        function startAutoIterate() {
-            if (transformationRects.length === 0) {
-                alert("Add or load a transformation set first.");
-                return;
-            }
+            resetCanvas();
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
-
-            const iterateStep = () => {
-                const newPoints = runIFS(numIter);
-                drawPoints(newPoints, alpha);
-            };
-
-            iterateStep();
-            intervalId = setInterval(iterateStep, 100);
-            playPauseBtn.innerHTML = '<span class="material-icons-round">pause_circle</span>Pause Auto-Iterate';
-            playPauseBtn.classList.add('playing');
+            drawPoints(runIFS(numIter), alpha);
         }
 
-        function stopAutoIterate() {
-            clearInterval(intervalId);
-            intervalId = null;
-            playPauseBtn.innerHTML = '<span class="material-icons-round">play_circle</span>Auto-Iterate';
-            playPauseBtn.classList.remove('playing');
-        }
-
-        // --- Visual Editor (Overlay Alignment Correction) ---
+        // --- 4. Visual Editor (Overlay Logic) ---
 
         function drawOverlays() {
             document.querySelectorAll('.transform-overlay').forEach(el => el.remove());
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const containerRect = canvasContainer.getBoundingClientRect();
+
+            const canvasLeftOffset = canvasRect.left - containerRect.left;
+            const canvasTopOffset = canvasRect.top - containerRect.top;
 
             transformationRects.forEach((rect, index) => {
                 const overlay = document.createElement('div');
@@ -683,17 +764,14 @@
                 overlay.style.width = `${rect.width}px`;
                 overlay.style.height = `${rect.height}px`;
 
-                // Calculate displacement from the center of the canvas-container (which is 0,0 for the overlay's CSS transform-origin: center center)
-                // The canvas is centered within its container.
-                // The rectangle's center is at (rect.x + rect.width/2, rect.y + rect.height/2) in canvas coordinates [0, CANVAS_SIZE].
+                overlay.style.left = `${canvasLeftOffset + rect.x}px`;
+                overlay.style.top = `${canvasTopOffset + rect.y}px`;
+                overlay.style.transform = `rotate(${rect.rotation}rad)`;
 
-                // Displacement needed to move the overlay's center from the container center (CANVAS_SIZE/2) to the rect's center.
-                const offsetX = (rect.x + rect.width / 2) - (CANVAS_SIZE / 2);
-                const offsetY = (rect.y + rect.height / 2) - (CANVAS_SIZE / 2);
+                // Solid border with transformation color
+                const borderWidth = (index === activeRectIndex) ? '2px' : '1px';
+                overlay.style.border = `${borderWidth} solid ${rect.color}`;
 
-                // Use CSS transform for position and rotation relative to the container center
-                overlay.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${rect.rotation}rad)`;
-                overlay.style.borderColor = rect.color;
 
                 if (index === activeRectIndex) {
                     overlay.classList.add('selected');
@@ -722,13 +800,43 @@
             });
         }
 
-        // --- Mouse/Touch Interaction for Overlays (Adjusted Drag Calculation) ---
 
+        // --- 5. Initialisation and Event Handlers ---
+
+        function initialize() {
+            setCanvasSize();
+
+            // Load Sierpinski Gasket by default
+            const initialScaleFactor = CANVAS_SIZE / 600;
+            IFS_PRESETS.sierpinski.forEach(rect => {
+                transformationRects.push({
+                    x: rect.x * initialScaleFactor,
+                    y: rect.y * initialScaleFactor,
+                    width: rect.width * initialScaleFactor,
+                    height: rect.height * initialScaleFactor,
+                    rotation: rect.rotation,
+                    p: rect.p,
+                    color: rect.color
+                });
+            });
+
+            renderTransformationsUI();
+            setActiveTransform(0);
+
+            // Set initial canvas mode button text
+            canvasModeToggleBtn.innerHTML = '<span class="material-icons-round">light_mode</span>Light Canvas';
+
+            // Run one step to show the initial fractal immediately
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+            drawPoints(runIFS(numIter), alpha);
+        }
+
+        // Mouse/Touch Interaction for Overlays
         canvasContainer.addEventListener('pointerdown', (e) => {
             const target = e.target;
             const overlay = target.closest('.transform-overlay');
 
-            // Get canvas bounds to calculate relative position within the canvas
             const canvasRect = canvas.getBoundingClientRect();
 
             if (overlay) {
@@ -738,17 +846,16 @@
 
                 activeRect = { ...transformationRects[index], index: index };
 
-                // Store mouse position relative to the canvas top-left corner
                 dragStartX = e.clientX - canvasRect.left;
                 dragStartY = e.clientY - canvasRect.top;
                 initialRectState = { ...activeRect };
 
                 if (target.classList.contains('handle')) {
                     if (target.classList.contains('rotate')) { dragMode = 'rotate'; }
+                    else if (target.classList.contains('br')) { dragMode = 'resize-br'; }
                     else if (target.classList.contains('tl')) { dragMode = 'resize-tl'; }
                     else if (target.classList.contains('tr')) { dragMode = 'resize-tr'; }
                     else if (target.classList.contains('bl')) { dragMode = 'resize-bl'; }
-                    else if (target.classList.contains('br')) { dragMode = 'resize-br'; }
                 } else {
                     dragMode = 'move';
                 }
@@ -763,7 +870,6 @@
             e.preventDefault();
             const canvasRect = canvas.getBoundingClientRect();
 
-            // Current mouse position relative to canvas top-left
             const currentX = e.clientX - canvasRect.left;
             const currentY = e.clientY - canvasRect.top;
 
@@ -772,14 +878,29 @@
 
             const rect = transformationRects[activeRectIndex];
 
-            // Handle the drag movements
             switch (dragMode) {
                 case 'move':
                     rect.x = initialRectState.x + dx;
                     rect.y = initialRectState.y + dy;
                     break;
-                case 'resize-br': // Simplified resizing
+                case 'resize-br':
                     rect.width = initialRectState.width + dx;
+                    rect.height = initialRectState.height + dy;
+                    break;
+                case 'resize-tl':
+                    rect.x = initialRectState.x + dx;
+                    rect.y = initialRectState.y + dy;
+                    rect.width = initialRectState.width - dx;
+                    rect.height = initialRectState.height - dy;
+                    break;
+                case 'resize-tr':
+                    rect.y = initialRectState.y + dy;
+                    rect.width = initialRectState.width + dx;
+                    rect.height = initialRectState.height - dy;
+                    break;
+                case 'resize-bl':
+                    rect.x = initialRectState.x + dx;
+                    rect.width = initialRectState.width - dx;
                     rect.height = initialRectState.height + dy;
                     break;
                 case 'rotate':
@@ -804,7 +925,7 @@
             renderTransformationsUI();
         });
 
-        // --- Event Listeners and Initial Load ---
+        // Control Panel Event Listeners
         document.getElementById('addTransform').addEventListener('click', () => {
             stopAutoIterate();
             addTransformUI();
@@ -822,24 +943,28 @@
         });
 
         document.getElementById('playPauseBtn').addEventListener('click', toggleAutoIterate);
+        document.getElementById('canvasModeToggleBtn').addEventListener('click', toggleCanvasTheme);
         document.getElementById('randomBtn').addEventListener('click', () => {
             stopAutoIterate();
             transformationRects = [];
             generateRandomIFS(Math.floor(Math.random() * 4) + 2);
             renderTransformationsUI();
-            initialNoise(150000);
+            resetCanvas();
+            // This only draws the initial set of points (a single step), it does not start auto-iterate.
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+            drawPoints(runIFS(numIter), alpha);
         });
+
         document.getElementById('resetBtn').addEventListener('click', () => {
             stopAutoIterate();
-            initialNoise(150000);
+            resetCanvas(true);
         });
+
 
         window.addEventListener('resize', setCanvasSize);
 
-        // Initial Load
-        setCanvasSize();
-        loadPreset('sierpinski'); // Load Sierpinski Gasket by default
-        setActiveTransform(0); 
+        initialize();
     </script>
 
 </body>
