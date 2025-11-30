@@ -33,17 +33,49 @@
             color: var(--text-primary);
         }
 
-        /* --- 2. Control Panel --- */
+        /* --- 2. Control Panel & Scrollbar Styling --- */
         #controls {
             width: 350px;
             flex-shrink: 0;
             background: var(--bg-panel);
             padding: var(--spacing);
             border-right: 1px solid var(--border-color);
-            overflow-y: auto;
+            overflow-y: scroll;
             display: flex;
             flex-direction: column;
         }
+
+        /* Custom Scrollbar Styling for Webkit (Chrome, Safari) */
+        #controls::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #controls::-webkit-scrollbar-track {
+            background: var(--bg-panel);
+        }
+
+        #controls::-webkit-scrollbar-thumb {
+            background-color: #d0d0d0;
+            /* Light grey */
+            border-radius: 4px;
+            border: 2px solid var(--bg-panel);
+        }
+
+        /* Remove up/down handles (buttons) */
+        #controls::-webkit-scrollbar-button {
+            display: none;
+        }
+
+        #controls::-webkit-scrollbar-thumb:hover {
+            background-color: var(--accent-red);
+        }
+
+        /* Custom Scrollbar Styling for Firefox */
+        #controls {
+            scrollbar-width: thin;
+            scrollbar-color: #d0d0d0 var(--bg-panel);
+        }
+
 
         #controls h2 {
             color: var(--accent-red);
@@ -55,7 +87,7 @@
             font-weight: bold;
         }
 
-        /* Fieldset/Legend Styling */
+        /* Fieldset/Legend Styling (Unchanged) */
         fieldset {
             margin-bottom: var(--spacing);
             padding: 10px;
@@ -69,10 +101,9 @@
             font-size: 0.9em;
         }
 
-        /* --- 3. Canvas Area & Toggleable Canvas Mode --- */
+        /* --- 3. Canvas Area & Toggleable Canvas Mode (Updated) --- */
         #canvas-container {
             flex-grow: 1;
-            /* Ensures canvas takes up max horizontal space */
             position: relative;
             display: flex;
             justify-content: center;
@@ -84,16 +115,16 @@
         #outputCanvas {
             display: block;
             background: #000;
-            /* Default Dark Mode */
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
+            border: none;
+            /* Dark mode: no border */
             border-radius: var(--radius);
         }
 
         /* Light Canvas Mode */
         body.light-canvas-mode #outputCanvas {
             background: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+            /* UPDATED: Thicker border for light mode */
+            border: 3px solid #777;
         }
 
         /* --- 4. Inputs and Buttons --- */
@@ -132,6 +163,40 @@
         input:hover {
             border-bottom-color: var(--accent-red);
         }
+
+        /* Color Selector Styling */
+        input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: none;
+            padding: 0;
+            width: 60px;
+            height: 20px;
+            cursor: pointer;
+            background-color: transparent;
+            border-radius: var(--radius);
+            vertical-align: middle;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: var(--radius);
+            width: 60px;
+            height: 20px;
+        }
+
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: var(--radius);
+            width: 60px;
+            height: 20px;
+        }
+
 
         select {
             width: 100%;
@@ -264,53 +329,56 @@
             cursor: grab;
             touch-action: none;
             transform-origin: 0 0;
-            border: none;
+            border: 1px solid;
+            /* Border for visibility */
         }
 
         .transform-overlay.selected {
             z-index: 100;
+            border-width: 2px !important;
         }
 
-        /* Default Handle (Corner: Hollow Red Circle for Resize) */
+        /* Base handle style */
         .handle {
             position: absolute;
-            width: 12px;
-            height: 12px;
-            background: white;
-            border: 2px solid var(--accent-red);
-            /* Hollow appearance */
-            border-radius: 50%;
             touch-action: none;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-            margin: -6px;
             z-index: 101;
-        }
-
-        /* Cursors to indicate corner functionality */
-        .handle.tl {
-            cursor: nwse-resize;
-        }
-
-        .handle.tr {
-            cursor: nesw-resize;
-        }
-
-        .handle.bl {
-            cursor: nesw-resize;
-        }
-
-        .handle.br {
-            cursor: nwse-resize;
-        }
-
-        /* Rotation Handle (Filled Red Circle, outside the rectangle) */
-        .handle.rotate {
-            background: var(--accent-red);
             cursor: grab;
-            top: -30px;
-            left: 50%;
-            margin: -6px 0 0 -6px;
+            box-shadow: none;
             border: none;
+        }
+
+        /* Corner Handle - Smaller, solid circle, perfectly centered, color set by JS */
+        .handle.corner {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-red);
+            /* Base color, overwritten by JS */
+            border-radius: 50%;
+            margin: -5px;
+        }
+
+        /* Rotation Handle - Only the large icon, no background */
+        .handle.rotate {
+            background: none;
+            width: 28px;
+            height: 28px;
+            margin-left: -14px;
+            margin-top: -34px;
+            left: 50%;
+            cursor: grab;
+
+            /* Styles to center the icon */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Color set by JS */
+            padding: 0;
+            font-size: 28px;
+        }
+
+        .handle.rotate .material-icons-round {
+            margin: 0;
         }
     </style>
 </head>
@@ -323,9 +391,10 @@
         <fieldset>
             <legend>Iteration Parameters</legend>
             <div class="flex-row" style="margin-bottom: 10px;">
-                <label>Points: <input type="number" id="numIterations" value="20000" min="1000"></label>
-                <label>Alpha: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0"
-                        step="0.01"></label>
+                <label>Points: <input type="number" id="numIterations" value="20000" min="1000"
+                        onchange="saveSettings()"></label>
+                <label>Alpha: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0" step="0.01"
+                        onchange="saveSettings()"></label>
             </div>
 
             <div class="action-buttons">
@@ -352,6 +421,12 @@
                 <button id="resetBtn">
                     <span class="material-icons-round">delete_sweep</span>
                     Clear Canvas
+                </button>
+            </div>
+            <div class="action-buttons">
+                <button id="resetSettingsBtn" style="background-color: #555; width: 100%;">
+                    <span class="material-icons-round">settings_backup_restore</span>
+                    Reset All Settings
                 </button>
             </div>
         </fieldset>
@@ -395,6 +470,7 @@
         const canvasContainer = document.getElementById('canvas-container');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const canvasModeToggleBtn = document.getElementById('canvasModeToggleBtn');
+        const resetSettingsBtn = document.getElementById('resetSettingsBtn');
 
         let transformationRects = [];
         let activeRectIndex = -1;
@@ -405,35 +481,48 @@
         let dragStartX, dragStartY;
         let initialRectState;
 
+        const LOCAL_STORAGE_KEY = 'ifsAttractorSettings';
+
+        // UPDATED: Corrected Barnsley Fern preset using scales that create the proper shape.
         const IFS_PRESETS = {
             barnsley: [
-                { x: 295, y: 0, width: 15, height: 96, rotation: 0.0, p: 0.01, color: '#32CD32' },
-                { x: 100, y: 96, width: 490, height: 490, rotation: -0.05, p: 0.85, color: '#228B22' },
-                { x: 100, y: 96, width: 220, height: 220, rotation: 0.4, p: 0.07, color: '#3CB371' },
-                { x: 380, y: 250, width: 200, height: 200, rotation: -0.4, p: 0.07, color: '#00FA9A' }
+                // T1: Stem (0.01 probability vertical line at the base)
+                // W=10 for visibility, H=96 for 0.16 scale. Y position 504 puts the base of the rect at 552.
+                { x: 295, y: 504, width: 10, height: 96, rotation: 0.0, p: 0.01, color: '#32CD32' },
+                // T2: Trunk/Main (0.85 scale, large translation up in IFS space, adjusted Y to be low)
+                // W/H = 510. Y position 285 is the base of the rect. Center Y = 540 (1.6 * 150 + 300).
+                { x: 45, y: 285, width: 510, height: 510, rotation: 0.03, p: 0.85, color: '#228B22' },
+                // T3: Left Leaf (0.2 scale/rot equivalent, manually placed for visualization)
+                { x: 200, y: 200, width: 150, height: 150, rotation: 0.85, p: 0.07, color: '#3CB371' },
+                // T4: Right Leaf (0.2 scale/rot equivalent, manually placed for visualization)
+                { x: 250, y: 350, width: 150, height: 150, rotation: -0.85, p: 0.07, color: '#00FA9A' }
             ],
             sierpinski: [
                 { x: 0, y: 0, width: 300, height: 300, rotation: 0, p: 0.333, color: '#FFD700' },
                 { x: 300, y: 0, width: 300, height: 300, rotation: 0, p: 0.333, color: '#1E90FF' },
                 { x: 150, y: 300, width: 300, height: 300, rotation: 0, p: 0.334, color: '#FF4500' }
             ],
+            // Koch Curve Variant (Base at y=400, segments are 200x200)
             koch: [
-                { x: 0, y: 0, width: 200, height: 200, rotation: 0, p: 0.25, color: '#e0b0ff' },
-                { x: 200, y: 0, width: 200, height: 200, rotation: Math.PI / 3, p: 0.25, color: '#dda0dd' },
-                { x: 300, y: 173, width: 200, height: 200, rotation: -Math.PI / 3, p: 0.25, color: '#ffb6c1' },
-                { x: 400, y: 0, width: 200, height: 200, rotation: 0, p: 0.25, color: '#ffc0cb' }
+                { x: 0, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#e0b0ff' }, // T1: Left segment
+                { x: 200, y: 400, width: 200, height: 200, rotation: Math.PI / 3, p: 0.25, color: '#dda0dd' }, // T2: Rotated 60deg
+                { x: 300, y: 227, width: 200, height: 200, rotation: -Math.PI / 3, p: 0.25, color: '#ffb6c1' }, // T3: Rotated -60deg, translated up
+                { x: 400, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#ffc0cb' } // T4: Right segment
             ],
             cantor: [
                 { x: 0, y: 200, width: 200, height: 100, rotation: 0, p: 0.5, color: '#FFFFFF' },
                 { x: 400, y: 200, width: 200, height: 100, rotation: 0, p: 0.5, color: '#FFFFFF' }
             ],
             dragon: [
-                { x: 0, y: 0, width: 300, height: 300, rotation: -Math.PI / 4, p: 0.5, color: '#4682B4' },
-                { x: 300, y: 300, width: 300, height: 300, rotation: 3 * Math.PI / 4, p: 0.5, color: '#87CEFA' }
+                // T1: 45 degree rotation, 1/sqrt(2) scale
+                { x: 100, y: 200, width: 400, height: 400, rotation: -Math.PI / 4, p: 0.5, color: '#4682B4' },
+                // T2: 135 degree rotation, 1/sqrt(2) scale, translated to overlap and form the curve
+                { x: 200, y: 100, width: 400, height: 400, rotation: 3 * Math.PI / 4, p: 0.5, color: '#87CEFA' }
             ]
         };
 
-        // --- 2. Core Fractal Functions ---
+
+        // --- 2. Core Fractal Functions (Unchanged) ---
 
         function getAffineMatrixFromRect(rect) {
             const scaleX = rect.width / CANVAS_SIZE;
@@ -446,8 +535,12 @@
             const C = scaleX * sinRot;
             const D = scaleY * cosRot;
 
-            const normRectCenterX = (rect.x + rect.width / 2 - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
-            const normRectCenterY = (rect.y + rect.height / 2 - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
+            const rectCenterX = rect.x + rect.width / 2;
+            const rectCenterY = rect.y + rect.height / 2;
+
+            // Normalize: 4 is the IFS coordinate range [-2, 2]
+            const normRectCenterX = (rectCenterX - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
+            const normRectCenterY = (rectCenterY - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
 
             const E = normRectCenterX;
             const F = normRectCenterY;
@@ -526,7 +619,94 @@
             ctx.globalAlpha = 1.0;
         }
 
-        // --- 3. UI and Control Functions ---
+        // --- 3. UI and Control Functions (Local Storage Integration) ---
+
+        function saveSettings() {
+            // Scale rects back to 600x600 space for storage consistency
+            const scaleFactor = 600 / CANVAS_SIZE;
+            const scaledRects = transformationRects.map(rect => ({
+                ...rect,
+                x: rect.x * scaleFactor,
+                y: rect.y * scaleFactor,
+                width: rect.width * scaleFactor,
+                height: rect.height * scaleFactor
+            }));
+
+            const settings = {
+                numIterations: document.getElementById('numIterations').value,
+                alphaValue: document.getElementById('alphaValue').value,
+                isCanvasLightMode: isCanvasLightMode, // SAVED
+                transformationRects: scaledRects
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
+            const initialScaleFactor = CANVAS_SIZE / 600;
+
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+
+                // 1. Load Iteration Parameters
+                document.getElementById('numIterations').value = settings.numIterations;
+                document.getElementById('alphaValue').value = settings.alphaValue;
+
+                // 2. Load Canvas Mode
+                isCanvasLightMode = settings.isCanvasLightMode;
+                document.body.classList.toggle('light-canvas-mode', isCanvasLightMode);
+                canvasModeToggleBtn.innerHTML = isCanvasLightMode
+                    ? '<span class="material-icons-round">dark_mode</span>Dark Canvas'
+                    : '<span class="material-icons-round">light_mode</span>Light Canvas';
+
+                // 3. Load Transformations (scale them to the current CANVAS_SIZE)
+                transformationRects = settings.transformationRects.map(rect => {
+                    return {
+                        ...rect,
+                        x: rect.x * initialScaleFactor,
+                        y: rect.y * initialScaleFactor,
+                        width: rect.width * initialScaleFactor,
+                        height: rect.height * initialScaleFactor,
+                    };
+                });
+            } else {
+                // Load default Sierpinski Gasket if no saved settings
+                isCanvasLightMode = false;
+                document.body.classList.remove('light-canvas-mode');
+
+                IFS_PRESETS.sierpinski.forEach(rect => {
+                    transformationRects.push({
+                        x: rect.x * initialScaleFactor,
+                        y: rect.y * initialScaleFactor,
+                        width: rect.width * initialScaleFactor,
+                        height: rect.height * initialScaleFactor,
+                        rotation: rect.rotation,
+                        p: rect.p,
+                        color: rect.color
+                    });
+                });
+            }
+
+            renderTransformationsUI();
+            setActiveTransform(0);
+
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+            drawPoints(runIFS(numIter), alpha);
+        }
+
+        function resetAllSettings() {
+            if (!confirm("Are you sure you want to reset all settings and clear local storage?")) {
+                return;
+            }
+            stopAutoIterate();
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            transformationRects = [];
+            activeRectIndex = -1;
+            setCanvasSize(); // Recalculates size and clears canvas
+            loadSettings(); // Loads defaults (Sierpinski Gasket)
+            alert("All settings have been reset to default (Sierpinski Gasket).");
+        }
 
         function stopAutoIterate() {
             clearInterval(intervalId);
@@ -543,6 +723,8 @@
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
 
+            resetCanvas(true);
+
             const iterateStep = () => {
                 const newPoints = runIFS(numIter);
                 drawPoints(newPoints, alpha);
@@ -554,7 +736,6 @@
             playPauseBtn.classList.add('playing');
         }
 
-        // FIX: Defined function for event listener
         function toggleAutoIterate() {
             if (intervalId) {
                 stopAutoIterate();
@@ -578,6 +759,7 @@
                 : '<span class="material-icons-round">light_mode</span>Light Canvas';
 
             resetCanvas(true);
+            saveSettings();
         }
 
         function setActiveTransform(index) {
@@ -590,35 +772,57 @@
             if (isNaN(val) && key !== 'color') return;
             transformationRects[index][key] = val;
 
+            if (intervalId && key !== 'color' && key !== 'p') {
+                resetCanvas(true);
+            }
+
             if (key === 'width' || key === 'height') {
                 renderTransformationsUI();
             } else {
                 drawOverlays();
                 const item = document.querySelector(`.transform-item[data-index="${index}"]`);
-                if (item && item.querySelector(`input[name="${key}"][type="range"]`)) {
-                    const span = item.querySelector(`input[name="${key}"]`).closest('.range-label').querySelector('span');
-                    if (span) {
-                        span.textContent = key === 'rotation' ? `${(val * 180 / Math.PI).toFixed(1)}°` : `${Math.round(val)}`;
+                if (item) {
+                    if (item.querySelector(`input[name="${key}"][type="range"]`)) {
+                        const span = item.querySelector(`input[name="${key}"]`).closest('.range-label').querySelector('span');
+                        if (span) {
+                            span.textContent = key === 'rotation' ? `${(val * 180 / Math.PI).toFixed(1)}°` : `${Math.round(val)}`;
+                        }
+                    }
+                    if (key === 'color') {
+                        const h4Span = item.querySelector('h4 span');
+                        if (h4Span) h4Span.style.color = val;
+                    }
+                    if (key === 'p') {
+                        const h4Span = item.querySelector('h4 span');
+                        if (h4Span) h4Span.textContent = `(P=${(val).toFixed(3)})`;
                     }
                 }
             }
+            saveSettings();
         }
 
         function removeTransformRect(index) {
             transformationRects.splice(index, 1);
             activeRectIndex = -1;
+            if (intervalId) {
+                resetCanvas(true);
+            }
             renderTransformationsUI();
+            saveSettings();
         }
 
-        // FIX: Defined function for event listener
         function addTransformUI(initialData = null) {
             const newRect = initialData || {
                 x: CANVAS_SIZE * 0.25, y: CANVAS_SIZE * 0.25, width: CANVAS_SIZE * 0.5, height: CANVAS_SIZE * 0.5, rotation: 0, p: 1 / (transformationRects.length + 1 || 1),
                 color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
             };
             transformationRects.push(newRect);
+            if (intervalId) {
+                resetCanvas(true);
+            }
             renderTransformationsUI();
             setActiveTransform(transformationRects.length - 1);
+            saveSettings();
         }
 
         function renderTransformationsUI() {
@@ -629,31 +833,33 @@
                 div.dataset.index = index;
                 div.classList.toggle('selected', index === activeRectIndex);
                 div.onclick = (e) => {
-                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON') {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && e.target.closest('button') === null) {
                         setActiveTransform(index);
                     }
                 };
 
-                const maxRangeX = CANVAS_SIZE - rect.width;
-                const maxRangeY = CANVAS_SIZE - rect.height;
+                const maxRangeX = CANVAS_SIZE - 10;
+                const maxRangeY = CANVAS_SIZE - 10;
                 const currentRotDeg = (rect.rotation * 180 / Math.PI).toFixed(1);
 
                 div.innerHTML = `
                     <h4>
                         Map ${index + 1} <span style="color:${rect.color}; font-weight:400;">(P=${(rect.p).toFixed(3)})</span>
-                        <button onclick="event.stopPropagation(); removeTransformRect(${index})" 
-                                style="background-color: #555; padding: 5px 10px; font-size: 0.8em;">
-                            <span class="material-icons-round" style="font-size:1em;">close</span>
+                        <button onclick="event.stopPropagation(); removeTransformRect(${index})"
+                                style="background-color: #555; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span class="material-icons-round" style="font-size:18px; margin: 0;">close</span>
                         </button>
                     </h4>
                     <div class="transform-params">
                         <div class="flex-row">
                             <label>P (Weight): <input type="number" step="0.01" value="${rect.p}" onchange="updateTransformRect(${index}, 'p', this.value)" style="width: 50px;"></label>
-                            <label>Color: <input type="color" value="${rect.color}" onchange="updateTransformRect(${index}, 'color', this.value)" style="width: 50px;"></label>
+                        </div>
+                        <div class="flex-row" style="margin-top: 8px;">
+                            <label>Color: <input type="color" value="${rect.color}" onchange="updateTransformRect(${index}, 'color', this.value)"></label>
                         </div>
                         <div class="flex-row">
-                            <label class="range-label">X: <input type="range" name="x" min="0" max="${maxRangeX}" value="${rect.x}" oninput="updateTransformRect(${index}, 'x', this.value)" style="width: 80px;"> <span>${Math.round(rect.x)}</span></label>
-                            <label class="range-label">Y: <input type="range" name="y" min="0" max="${maxRangeY}" value="${rect.y}" oninput="updateTransformRect(${index}, 'y', this.value)" style="width: 80px;"> <span>${Math.round(rect.y)}</span></label>
+                            <label class="range-label">X: <input type="range" name="x" min="${-CANVAS_SIZE}" max="${maxRangeX}" value="${rect.x}" oninput="updateTransformRect(${index}, 'x', this.value)" style="width: 80px;"> <span>${Math.round(rect.x)}</span></label>
+                            <label class="range-label">Y: <input type="range" name="y" min="${-CANVAS_SIZE}" max="${maxRangeY}" value="${rect.y}" oninput="updateTransformRect(${index}, 'y', this.value)" style="width: 80px;"> <span>${Math.round(rect.y)}</span></label>
                         </div>
                         <div class="flex-row">
                             <label class="range-label">W: <input type="range" name="width" min="10" max="${CANVAS_SIZE}" value="${rect.width}" oninput="updateTransformRect(${index}, 'width', this.value)" style="width: 80px;"> <span>${Math.round(rect.width)}</span></label>
@@ -743,6 +949,7 @@
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
             drawPoints(runIFS(numIter), alpha);
+            saveSettings();
         }
 
         // --- 4. Visual Editor (Overlay Logic) ---
@@ -768,7 +975,6 @@
                 overlay.style.top = `${canvasTopOffset + rect.y}px`;
                 overlay.style.transform = `rotate(${rect.rotation}rad)`;
 
-                // Solid border with transformation color
                 const borderWidth = (index === activeRectIndex) ? '2px' : '1px';
                 overlay.style.border = `${borderWidth} solid ${rect.color}`;
 
@@ -788,11 +994,14 @@
                         handle.className = `handle ${h.class}`;
                         handle.style.left = `${h.x}px`;
                         handle.style.top = `${h.y}px`;
+                        handle.style.backgroundColor = rect.color;
                         overlay.appendChild(handle);
                     });
 
                     const rotateHandle = document.createElement('div');
                     rotateHandle.className = 'handle rotate';
+                    rotateHandle.innerHTML = '<span class="material-icons-round">rotate_right</span>';
+                    rotateHandle.style.color = rect.color;
                     overlay.appendChild(rotateHandle);
                 }
 
@@ -805,31 +1014,7 @@
 
         function initialize() {
             setCanvasSize();
-
-            // Load Sierpinski Gasket by default
-            const initialScaleFactor = CANVAS_SIZE / 600;
-            IFS_PRESETS.sierpinski.forEach(rect => {
-                transformationRects.push({
-                    x: rect.x * initialScaleFactor,
-                    y: rect.y * initialScaleFactor,
-                    width: rect.width * initialScaleFactor,
-                    height: rect.height * initialScaleFactor,
-                    rotation: rect.rotation,
-                    p: rect.p,
-                    color: rect.color
-                });
-            });
-
-            renderTransformationsUI();
-            setActiveTransform(0);
-
-            // Set initial canvas mode button text
-            canvasModeToggleBtn.innerHTML = '<span class="material-icons-round">light_mode</span>Light Canvas';
-
-            // Run one step to show the initial fractal immediately
-            const numIter = parseInt(document.getElementById('numIterations').value);
-            const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+            loadSettings();
         }
 
         // Mouse/Touch Interaction for Overlays
@@ -850,8 +1035,8 @@
                 dragStartY = e.clientY - canvasRect.top;
                 initialRectState = { ...activeRect };
 
-                if (target.classList.contains('handle')) {
-                    if (target.classList.contains('rotate')) { dragMode = 'rotate'; }
+                if (target.classList.contains('handle') || target.closest('.handle')) {
+                    if (target.classList.contains('rotate') || target.closest('.rotate')) { dragMode = 'rotate'; }
                     else if (target.classList.contains('br')) { dragMode = 'resize-br'; }
                     else if (target.classList.contains('tl')) { dragMode = 'resize-tl'; }
                     else if (target.classList.contains('tr')) { dragMode = 'resize-tr'; }
@@ -914,13 +1099,20 @@
 
             rect.width = Math.max(10, rect.width);
             rect.height = Math.max(10, rect.height);
-            rect.x = Math.max(0, Math.min(rect.x, CANVAS_SIZE - rect.width));
-            rect.y = Math.max(0, Math.min(rect.y, CANVAS_SIZE - rect.height));
+            rect.x = Math.max(-rect.width + 10, Math.min(rect.x, CANVAS_SIZE - 10));
+            rect.y = Math.max(-rect.height + 10, Math.min(rect.y, CANVAS_SIZE - 10));
+
+            if (intervalId) {
+                resetCanvas(true);
+            }
 
             renderTransformationsUI();
         });
 
         canvasContainer.addEventListener('pointerup', () => {
+            if (dragMode) {
+                saveSettings();
+            }
             dragMode = null;
             renderTransformationsUI();
         });
@@ -950,10 +1142,10 @@
             generateRandomIFS(Math.floor(Math.random() * 4) + 2);
             renderTransformationsUI();
             resetCanvas();
-            // This only draws the initial set of points (a single step), it does not start auto-iterate.
             const numIter = parseInt(document.getElementById('numIterations').value);
             const alpha = parseFloat(document.getElementById('alphaValue').value);
             drawPoints(runIFS(numIter), alpha);
+            saveSettings();
         });
 
         document.getElementById('resetBtn').addEventListener('click', () => {
@@ -961,6 +1153,7 @@
             resetCanvas(true);
         });
 
+        resetSettingsBtn.addEventListener('click', resetAllSettings);
 
         window.addEventListener('resize', setCanvasSize);
 
