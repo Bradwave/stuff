@@ -123,7 +123,7 @@
         /* Light Canvas Mode */
         body.light-canvas-mode #outputCanvas {
             background: #fff;
-            /* UPDATED: Thicker border for light mode */
+            /* Thicker border for light mode */
             border: 3px solid #777;
         }
 
@@ -242,6 +242,13 @@
             flex-grow: 1;
         }
 
+        /* A row with three buttons needs all to be smaller */
+        .action-buttons.three-col button {
+            flex-grow: 1;
+            min-width: 0;
+            /* Allow the button to shrink */
+        }
+
         #playPauseBtn {
             background-color: #555;
         }
@@ -329,13 +336,21 @@
             cursor: grab;
             touch-action: none;
             transform-origin: 0 0;
-            border: 1px solid;
-            /* Border for visibility */
+            /* CRITICAL FIX: Hint to use GPU for better anti-aliasing on rotation */
+            will-change: transform;
+            border: none;
+            box-shadow: none !important;
+            /* Ensure no residual shadow/blur */
+        }
+
+        /* Unselected state: Use a crisp 1px border. Rely on will-change for smoothing. */
+        .transform-overlay:not(.selected) {
+            border: 1px solid currentColor;
         }
 
         .transform-overlay.selected {
             z-index: 100;
-            border-width: 2px !important;
+            /* When selected, JS sets a 2px border */
         }
 
         /* Base handle style */
@@ -407,12 +422,22 @@
                     Auto-Iterate
                 </button>
             </div>
-            <div class="action-buttons">
+
+            <div class="action-buttons three-col">
                 <button id="canvasModeToggleBtn" style="background-color: #5b5b5b;">
                     <span class="material-icons-round">light_mode</span>
                     Light Canvas
                 </button>
+                <button id="bnwToggleBtn" style="background-color: #5b5b5b;">
+                    <span class="material-icons-round">invert_colors</span>
+                    B&W Transforms
+                </button>
+                <button id="toggleRectsBtn" style="background-color: #5b5b5b;">
+                    <span class="material-icons-round">visibility_off</span>
+                    Hide Transforms
+                </button>
             </div>
+
             <div class="action-buttons">
                 <button id="randomBtn">
                     <span class="material-icons-round">casino</span>
@@ -463,19 +488,23 @@
 
     <script>
         // --- 1. Global Variables & Initialization ---
-        let CANVAS_SIZE = 600;
+        let CANVAS_SIZE = 0;
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
         const transformationsList = document.getElementById('transformationsList');
         const canvasContainer = document.getElementById('canvas-container');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const canvasModeToggleBtn = document.getElementById('canvasModeToggleBtn');
+        const bnwToggleBtn = document.getElementById('bnwToggleBtn');
+        const toggleRectsBtn = document.getElementById('toggleRectsBtn'); // NEW
         const resetSettingsBtn = document.getElementById('resetSettingsBtn');
 
         let transformationRects = [];
         let activeRectIndex = -1;
         let intervalId = null;
         let isCanvasLightMode = false;
+        let isBNWTransformMode = false;
+        let showTransforms = true; // NEW STATE
 
         let dragMode = null;
         let dragStartX, dragStartY;
@@ -483,18 +512,15 @@
 
         const LOCAL_STORAGE_KEY = 'ifsAttractorSettings';
 
-        // UPDATED: Corrected Barnsley Fern preset using scales that create the proper shape.
+        // COLOR CONSTANTS
+        const ACCENT_RED = '#9a2b17';
+        const WHITE_COLOR = '#fff';
+
         const IFS_PRESETS = {
             barnsley: [
-                // T1: Stem (0.01 probability vertical line at the base)
-                // W=10 for visibility, H=96 for 0.16 scale. Y position 504 puts the base of the rect at 552.
                 { x: 295, y: 504, width: 10, height: 96, rotation: 0.0, p: 0.01, color: '#32CD32' },
-                // T2: Trunk/Main (0.85 scale, large translation up in IFS space, adjusted Y to be low)
-                // W/H = 510. Y position 285 is the base of the rect. Center Y = 540 (1.6 * 150 + 300).
                 { x: 45, y: 285, width: 510, height: 510, rotation: 0.03, p: 0.85, color: '#228B22' },
-                // T3: Left Leaf (0.2 scale/rot equivalent, manually placed for visualization)
                 { x: 200, y: 200, width: 150, height: 150, rotation: 0.85, p: 0.07, color: '#3CB371' },
-                // T4: Right Leaf (0.2 scale/rot equivalent, manually placed for visualization)
                 { x: 250, y: 350, width: 150, height: 150, rotation: -0.85, p: 0.07, color: '#00FA9A' }
             ],
             sierpinski: [
@@ -502,27 +528,24 @@
                 { x: 300, y: 0, width: 300, height: 300, rotation: 0, p: 0.333, color: '#1E90FF' },
                 { x: 150, y: 300, width: 300, height: 300, rotation: 0, p: 0.334, color: '#FF4500' }
             ],
-            // Koch Curve Variant (Base at y=400, segments are 200x200)
             koch: [
-                { x: 0, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#e0b0ff' }, // T1: Left segment
-                { x: 200, y: 400, width: 200, height: 200, rotation: Math.PI / 3, p: 0.25, color: '#dda0dd' }, // T2: Rotated 60deg
-                { x: 300, y: 227, width: 200, height: 200, rotation: -Math.PI / 3, p: 0.25, color: '#ffb6c1' }, // T3: Rotated -60deg, translated up
-                { x: 400, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#ffc0cb' } // T4: Right segment
+                { x: 0, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#e0b0ff' },
+                { x: 200, y: 400, width: 200, height: 200, rotation: Math.PI / 3, p: 0.25, color: '#dda0dd' },
+                { x: 300, y: 227, width: 200, height: 200, rotation: -Math.PI / 3, p: 0.25, color: '#ffb6c1' },
+                { x: 400, y: 400, width: 200, height: 200, rotation: 0, p: 0.25, color: '#ffc0cb' }
             ],
             cantor: [
                 { x: 0, y: 200, width: 200, height: 100, rotation: 0, p: 0.5, color: '#FFFFFF' },
                 { x: 400, y: 200, width: 200, height: 100, rotation: 0, p: 0.5, color: '#FFFFFF' }
             ],
             dragon: [
-                // T1: 45 degree rotation, 1/sqrt(2) scale
                 { x: 100, y: 200, width: 400, height: 400, rotation: -Math.PI / 4, p: 0.5, color: '#4682B4' },
-                // T2: 135 degree rotation, 1/sqrt(2) scale, translated to overlap and form the curve
                 { x: 200, y: 100, width: 400, height: 400, rotation: 3 * Math.PI / 4, p: 0.5, color: '#87CEFA' }
             ]
         };
 
 
-        // --- 2. Core Fractal Functions (Unchanged) ---
+        // --- 2. Core Fractal Functions ---
 
         function getAffineMatrixFromRect(rect) {
             const scaleX = rect.width / CANVAS_SIZE;
@@ -538,7 +561,6 @@
             const rectCenterX = rect.x + rect.width / 2;
             const rectCenterY = rect.y + rect.height / 2;
 
-            // Normalize: 4 is the IFS coordinate range [-2, 2]
             const normRectCenterX = (rectCenterX - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
             const normRectCenterY = (rectCenterY - CANVAS_SIZE / 2) / (CANVAS_SIZE / 4);
 
@@ -563,6 +585,9 @@
             const BURN_IN = 20;
 
             if (transformationRects.length === 0) return [];
+
+            // NEW: Determine attractor color override
+            const bnwAttractorColor = isBNWTransformMode ? (isCanvasLightMode ? ACCENT_RED : WHITE_COLOR) : null;
 
             const mappings = transformationRects.map(rect => ({
                 matrix: getAffineMatrixFromRect(rect),
@@ -596,7 +621,8 @@
                 currentY = nextPoint.y;
 
                 if (i >= BURN_IN) {
-                    newPoints.push({ x: currentX, y: currentY, color: selectedMapping.color });
+                    const pointColor = bnwAttractorColor || selectedMapping.color; // Use B&W color if active
+                    newPoints.push({ x: currentX, y: currentY, color: pointColor });
                 }
             }
             return newPoints;
@@ -621,8 +647,16 @@
 
         // --- 3. UI and Control Functions (Local Storage Integration) ---
 
+        function runSingleIteration() {
+            if (transformationRects.length === 0) return;
+            resetCanvas(true);
+            const numIter = parseInt(document.getElementById('numIterations').value);
+            const alpha = parseFloat(document.getElementById('alphaValue').value);
+            drawPoints(runIFS(numIter), alpha);
+            document.getElementById('iterateBtn').setAttribute('data-ran-once', 'true');
+        }
+
         function saveSettings() {
-            // Scale rects back to 600x600 space for storage consistency
             const scaleFactor = 600 / CANVAS_SIZE;
             const scaledRects = transformationRects.map(rect => ({
                 ...rect,
@@ -635,7 +669,9 @@
             const settings = {
                 numIterations: document.getElementById('numIterations').value,
                 alphaValue: document.getElementById('alphaValue').value,
-                isCanvasLightMode: isCanvasLightMode, // SAVED
+                isCanvasLightMode: isCanvasLightMode,
+                isBNWTransformMode: isBNWTransformMode,
+                showTransforms: showTransforms, // SAVE NEW STATE
                 transformationRects: scaledRects
             };
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
@@ -652,14 +688,25 @@
                 document.getElementById('numIterations').value = settings.numIterations;
                 document.getElementById('alphaValue').value = settings.alphaValue;
 
-                // 2. Load Canvas Mode
+                // 2. Load Visual Modes
                 isCanvasLightMode = settings.isCanvasLightMode;
                 document.body.classList.toggle('light-canvas-mode', isCanvasLightMode);
                 canvasModeToggleBtn.innerHTML = isCanvasLightMode
                     ? '<span class="material-icons-round">dark_mode</span>Dark Canvas'
                     : '<span class="material-icons-round">light_mode</span>Light Canvas';
 
-                // 3. Load Transformations (scale them to the current CANVAS_SIZE)
+                isBNWTransformMode = settings.isBNWTransformMode || false;
+                bnwToggleBtn.innerHTML = isBNWTransformMode
+                    ? '<span class="material-icons-round">palette</span>Colored Transforms'
+                    : '<span class="material-icons-round">invert_colors</span>B&W Transforms';
+
+                showTransforms = settings.showTransforms !== undefined ? settings.showTransforms : true; // LOAD NEW STATE
+                toggleRectsBtn.innerHTML = showTransforms
+                    ? '<span class="material-icons-round">visibility_off</span>Hide Transforms'
+                    : '<span class="material-icons-round">visibility</span>Show Transforms';
+
+
+                // 3. Load Transformations
                 transformationRects = settings.transformationRects.map(rect => {
                     return {
                         ...rect,
@@ -667,12 +714,17 @@
                         y: rect.y * initialScaleFactor,
                         width: rect.width * initialScaleFactor,
                         height: rect.height * initialScaleFactor,
+                        rotation: rect.rotation,
+                        p: rect.p,
+                        color: rect.color
                     };
                 });
             } else {
                 // Load default Sierpinski Gasket if no saved settings
                 isCanvasLightMode = false;
                 document.body.classList.remove('light-canvas-mode');
+                isBNWTransformMode = false;
+                showTransforms = true;
 
                 IFS_PRESETS.sierpinski.forEach(rect => {
                     transformationRects.push({
@@ -687,6 +739,7 @@
                 });
             }
 
+            resetCanvas(true);
             renderTransformationsUI();
             setActiveTransform(0);
 
@@ -703,8 +756,8 @@
             localStorage.removeItem(LOCAL_STORAGE_KEY);
             transformationRects = [];
             activeRectIndex = -1;
-            setCanvasSize(); // Recalculates size and clears canvas
-            loadSettings(); // Loads defaults (Sierpinski Gasket)
+            setCanvasSize();
+            loadSettings();
             alert("All settings have been reset to default (Sierpinski Gasket).");
         }
 
@@ -728,6 +781,7 @@
             const iterateStep = () => {
                 const newPoints = runIFS(numIter);
                 drawPoints(newPoints, alpha);
+                document.getElementById('iterateBtn').setAttribute('data-ran-once', 'true');
             };
 
             iterateStep();
@@ -750,6 +804,16 @@
             ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         }
 
+        function updateVisualModes() {
+            // Re-run the fractal drawing if necessary when visual modes change
+            if (intervalId) {
+                stopAutoIterate();
+                startAutoIterate();
+            } else if (document.getElementById('iterateBtn').hasAttribute('data-ran-once')) {
+                runSingleIteration();
+            }
+        }
+
         function toggleCanvasTheme() {
             isCanvasLightMode = !isCanvasLightMode;
             document.body.classList.toggle('light-canvas-mode', isCanvasLightMode);
@@ -759,6 +823,31 @@
                 : '<span class="material-icons-round">light_mode</span>Light Canvas';
 
             resetCanvas(true);
+            drawOverlays();
+            updateVisualModes();
+            saveSettings();
+        }
+
+        function toggleBNWTransforms() {
+            isBNWTransformMode = !isBNWTransformMode;
+
+            bnwToggleBtn.innerHTML = isBNWTransformMode
+                ? '<span class="material-icons-round">palette</span>Colored Transforms'
+                : '<span class="material-icons-round">invert_colors</span>B&W Transforms';
+
+            drawOverlays();
+            updateVisualModes();
+            saveSettings();
+        }
+
+        // NEW FUNCTION
+        function toggleShowTransforms() {
+            showTransforms = !showTransforms;
+            toggleRectsBtn.innerHTML = showTransforms
+                ? '<span class="material-icons-round">visibility_off</span>Hide Transforms'
+                : '<span class="material-icons-round">visibility</span>Show Transforms';
+
+            drawOverlays();
             saveSettings();
         }
 
@@ -789,8 +878,10 @@
                         }
                     }
                     if (key === 'color') {
-                        const h4Span = item.querySelector('h4 span');
-                        if (h4Span) h4Span.style.color = val;
+                        if (!isBNWTransformMode) {
+                            const h4Span = item.querySelector('h4 span');
+                            if (h4Span) h4Span.style.color = val;
+                        }
                     }
                     if (key === 'p') {
                         const h4Span = item.querySelector('h4 span');
@@ -838,13 +929,15 @@
                     }
                 };
 
+                const labelColor = isBNWTransformMode ? 'var(--text-secondary)' : rect.color;
+
                 const maxRangeX = CANVAS_SIZE - 10;
                 const maxRangeY = CANVAS_SIZE - 10;
                 const currentRotDeg = (rect.rotation * 180 / Math.PI).toFixed(1);
 
                 div.innerHTML = `
                     <h4>
-                        Map ${index + 1} <span style="color:${rect.color}; font-weight:400;">(P=${(rect.p).toFixed(3)})</span>
+                        Map ${index + 1} <span style="color:${labelColor}; font-weight:400;">(P=${(rect.p).toFixed(3)})</span>
                         <button onclick="event.stopPropagation(); removeTransformRect(${index})"
                                 style="background-color: #555; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <span class="material-icons-round" style="font-size:18px; margin: 0;">close</span>
@@ -887,6 +980,8 @@
             const availableHeight = containerRect.height - paddingY;
             const size = Math.floor(Math.min(availableWidth, availableHeight));
 
+            const isInitialLoad = CANVAS_SIZE === 0;
+
             if (canvas.width !== size && CANVAS_SIZE > 0) {
                 const scaleFactor = size / CANVAS_SIZE;
 
@@ -902,7 +997,10 @@
             canvas.width = size;
             canvas.height = size;
 
-            resetCanvas(true);
+            if (!isInitialLoad) {
+                resetCanvas(true);
+            }
+
             renderTransformationsUI();
         }
 
@@ -945,10 +1043,7 @@
             });
 
             renderTransformationsUI();
-            resetCanvas();
-            const numIter = parseInt(document.getElementById('numIterations').value);
-            const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+            runSingleIteration(); // Re-run the fractal
             saveSettings();
         }
 
@@ -957,6 +1052,10 @@
         function drawOverlays() {
             document.querySelectorAll('.transform-overlay').forEach(el => el.remove());
 
+            if (!showTransforms) { // CHECK NEW STATE
+                return;
+            }
+
             const canvasRect = canvas.getBoundingClientRect();
             const containerRect = canvasContainer.getBoundingClientRect();
 
@@ -964,29 +1063,46 @@
             const canvasTopOffset = canvasRect.top - containerRect.top;
 
             transformationRects.forEach((rect, index) => {
+
+                // DYNAMIC COLOR CALCULATION
+                const currentTransformColor = (function () {
+                    if (!isBNWTransformMode) {
+                        return rect.color;
+                    }
+                    if (isCanvasLightMode) {
+                        return ACCENT_RED;
+                    }
+                    return WHITE_COLOR;
+                })();
+
+
                 const overlay = document.createElement('div');
                 overlay.className = 'transform-overlay';
                 overlay.dataset.index = index;
 
-                overlay.style.width = `${rect.width}px`;
-                overlay.style.height = `${rect.height}px`;
+                overlay.style.color = currentTransformColor;
 
-                overlay.style.left = `${canvasLeftOffset + rect.x}px`;
-                overlay.style.top = `${canvasTopOffset + rect.y}px`;
+                const roundedWidth = Math.round(rect.width);
+                const roundedHeight = Math.round(rect.height);
+                const roundedX = Math.round(rect.x);
+                const roundedY = Math.round(rect.y);
+
+                overlay.style.width = `${roundedWidth}px`;
+                overlay.style.height = `${roundedHeight}px`;
+
+                overlay.style.left = `${canvasLeftOffset + roundedX}px`;
+                overlay.style.top = `${canvasTopOffset + roundedY}px`;
                 overlay.style.transform = `rotate(${rect.rotation}rad)`;
-
-                const borderWidth = (index === activeRectIndex) ? '2px' : '1px';
-                overlay.style.border = `${borderWidth} solid ${rect.color}`;
-
 
                 if (index === activeRectIndex) {
                     overlay.classList.add('selected');
+                    overlay.style.border = `2px solid ${currentTransformColor}`;
 
                     const handles = [
                         { class: 'corner tl', x: 0, y: 0 },
-                        { class: 'corner tr', x: rect.width, y: 0 },
-                        { class: 'corner bl', x: 0, y: rect.height },
-                        { class: 'corner br', x: rect.width, y: rect.height }
+                        { class: 'corner tr', x: roundedWidth, y: 0 },
+                        { class: 'corner bl', x: 0, y: roundedHeight },
+                        { class: 'corner br', x: roundedWidth, y: roundedHeight }
                     ];
 
                     handles.forEach(h => {
@@ -994,15 +1110,17 @@
                         handle.className = `handle ${h.class}`;
                         handle.style.left = `${h.x}px`;
                         handle.style.top = `${h.y}px`;
-                        handle.style.backgroundColor = rect.color;
+                        handle.style.backgroundColor = currentTransformColor;
                         overlay.appendChild(handle);
                     });
 
                     const rotateHandle = document.createElement('div');
                     rotateHandle.className = 'handle rotate';
                     rotateHandle.innerHTML = '<span class="material-icons-round">rotate_right</span>';
-                    rotateHandle.style.color = rect.color;
+                    rotateHandle.style.color = currentTransformColor;
                     overlay.appendChild(rotateHandle);
+                } else {
+                    overlay.style.border = '';
                 }
 
                 canvasContainer.appendChild(overlay);
@@ -1024,7 +1142,7 @@
 
             const canvasRect = canvas.getBoundingClientRect();
 
-            if (overlay) {
+            if (overlay && showTransforms) { // CHECK NEW STATE
                 e.preventDefault();
                 const index = parseInt(overlay.dataset.index);
                 setActiveTransform(index);
@@ -1051,7 +1169,7 @@
 
         canvasContainer.addEventListener('pointermove', (e) => {
             if (activeRectIndex === -1 || !dragMode) return;
-
+            // ... (pointermove logic remains the same) ...
             e.preventDefault();
             const canvasRect = canvas.getBoundingClientRect();
 
@@ -1129,22 +1247,20 @@
                 alert("Please add or load a transformation set.");
                 return;
             }
-            const numIter = parseInt(document.getElementById('numIterations').value);
-            const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+            runSingleIteration();
         });
 
         document.getElementById('playPauseBtn').addEventListener('click', toggleAutoIterate);
         document.getElementById('canvasModeToggleBtn').addEventListener('click', toggleCanvasTheme);
+        document.getElementById('bnwToggleBtn').addEventListener('click', toggleBNWTransforms);
+        document.getElementById('toggleRectsBtn').addEventListener('click', toggleShowTransforms); // NEW LISTENER
+
         document.getElementById('randomBtn').addEventListener('click', () => {
             stopAutoIterate();
             transformationRects = [];
             generateRandomIFS(Math.floor(Math.random() * 4) + 2);
             renderTransformationsUI();
-            resetCanvas();
-            const numIter = parseInt(document.getElementById('numIterations').value);
-            const alpha = parseFloat(document.getElementById('alphaValue').value);
-            drawPoints(runIFS(numIter), alpha);
+            runSingleIteration();
             saveSettings();
         });
 
