@@ -410,6 +410,8 @@
                         onchange="saveSettings()"></label>
                 <label>Alpha: <input type="number" id="alphaValue" value="0.05" min="0.01" max="1.0" step="0.01"
                         onchange="saveSettings()"></label>
+                <label>n. of iterations: <input type="number" id="burnInPointsInput" value="20" min="0"
+                        onchange="saveSettings()"></label>
             </div>
 
             <div class="action-buttons">
@@ -425,12 +427,12 @@
 
             <div class="action-buttons three-col">
                 <button id="canvasModeToggleBtn" style="background-color: #5b5b5b;">
-                    <span class="material-icons-round">light_mode</span>
-                    Light Canvas
+                    <span class="material-icons-round">dark_mode</span>
+                    Dark Canvas
                 </button>
                 <button id="bnwToggleBtn" style="background-color: #5b5b5b;">
-                    <span class="material-icons-round">invert_colors</span>
-                    B&W Transforms
+                    <span class="material-icons-round">palette</span>
+                    Colored Transforms
                 </button>
                 <button id="toggleRectsBtn" style="background-color: #5b5b5b;">
                     <span class="material-icons-round">visibility_off</span>
@@ -455,6 +457,7 @@
                 </button>
             </div>
         </fieldset>
+
         <fieldset id="presets">
             <legend>Load Preset IFS</legend>
             <select id="presetSelect">
@@ -480,6 +483,45 @@
                 Add New Transform
             </button>
         </fieldset>
+
+        <fieldset>
+            <legend>File Operations</legend>
+            <div class="action-buttons">
+                <button id="saveIFSBtn">
+                    <span class="material-icons-round">save_alt</span>
+                    Save IFS (.json)
+                </button>
+                <button id="loadIFSBtn">
+                    <span class="material-icons-round">folder_open</span>
+                    Load IFS (.json)
+                </button>
+            </div>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+        </fieldset>
+
+        <fieldset>
+            <legend>App Information</legend>
+            <button id="toggleInfoBtn" style="width: 100%; background-color: #5b5b5b;">
+                <span class="material-icons-round">info</span> How it Works
+            </button>
+            <div id="infoContent" style="display: none; margin-top: 10px; font-size: 0.85em; line-height: 1.4;">
+                <p style="font-weight: bold; margin-bottom: 5px;">IFS Attractor Generation (Random Iteration Algorithm)</p>
+                <p style="margin-top: 0;">This application generates fractals defined by an <b>Iterated Function System (IFS)</b> using the <b>Random Iteration Algorithm (RIA)</b>.</p>
+
+                <h3 style="margin-top: 10px; margin-bottom: 5px; color: var(--accent-red);">1. The IFS Definition</h5>
+                <p style="margin-top: 0;">The fractal is defined by a set of <b>affine transformations</b> (the rectangular maps). Each map combines <b>scaling</b>, <b>rotation</b>, and <b>translation</b> of a point.</p>
+                <p style="margin-top: 0;">The <b>Probability (P)</b> assigned to each map dictates its weight in the random selection process. The sum of all P values must equal 1.</p>
+
+                <h style="margin-top: 10px; margin-bottom: 5px; color: var(--accent-red);">2. The Iteration Process</h5>
+                <ol style="padding-left: 20px; margin-top: 0;">
+                    <li><b>Start:</b> The algorithm begins with an arbitrary point, usually the origin.</li>
+                    <li><b>Burn-In (N. of iterations):</b> The process runs for a set number of initial steps without drawing any points. This is the <b>transient phase</b>, which ensures the iterating point is pulled into the vicinity of the true <b>attractor set</b> (the fractal) before drawing begins.</li>
+                    <li><b>Drawing:</b> For the subsequent steps, a transformation is chosen randomly based on its P value.</li>
+                    <li><b>Mapping & Plotting:</b> The chosen transformation is applied to the previous point to generate a new point, which is then plotted as a 1x1 pixel.</li>
+                    <li><b>Blending:</b> The point is drawn with the specified <b>Alpha</b> (transparency). Areas of the attractor visited more frequently (higher density) accumulate more opacity, giving the fractal its final form.</li>
+                </ol>
+            </div>
+        </fieldset>
     </div>
 
     <div id="canvas-container">
@@ -498,6 +540,7 @@
         const bnwToggleBtn = document.getElementById('bnwToggleBtn');
         const toggleRectsBtn = document.getElementById('toggleRectsBtn');
         const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+        const fileInput = document.getElementById('fileInput'); // File input element
 
         let transformationRects = [];
         let activeRectIndex = -1;
@@ -506,10 +549,9 @@
         let isBNWTransformMode = false;
         let showTransforms = true;
 
-        // NEW: Persistent state for the last calculated point
+        // Persistent state for the last calculated point
         let currentIFS_X = 0;
         let currentIFS_Y = 0;
-        const BURN_IN_POINTS = 20; // Used only for the initial run
 
         let dragMode = null;
         let dragStartX, dragStartY;
@@ -585,7 +627,7 @@
 
         /**
          * Runs a batch of IFS iterations starting from a given point.
-         * @param {number} numPoints The number of points to generate (including burn-in if initial run).
+         * @param {number} numPoints The number of points to generate.
          * @param {number} startX The x-coordinate to start from.
          * @param {number} startY The y-coordinate to start from.
          * @param {boolean} isInitialRun Whether this is the first run, requiring burn-in.
@@ -597,6 +639,11 @@
             const newPoints = [];
 
             if (transformationRects.length === 0) return { points: [], finalX: startX, finalY: startY };
+
+            // Read burn-in value from input field. If not initial run, burn-in is 0.
+            const burnIn = isInitialRun ? parseInt(document.getElementById('burnInPointsInput').value) : 0;
+            const totalIterations = numPoints + burnIn;
+
 
             // Determine attractor color override
             const bnwAttractorColor = isBNWTransformMode ? (isCanvasLightMode ? ACCENT_RED : WHITE_COLOR) : null;
@@ -617,9 +664,6 @@
                 cumulativeProbs.push(currentSum);
             }
 
-            // If it's the initial run, include burn-in points in the loop count
-            const totalIterations = numPoints + (isInitialRun ? BURN_IN_POINTS : 0);
-
             for (let i = 0; i < totalIterations; i++) {
                 const r = Math.random();
                 let selectedMapping = null;
@@ -636,7 +680,7 @@
                 currentY = nextPoint.y;
 
                 // Only push points after burn-in
-                if (i >= BURN_IN_POINTS || !isInitialRun) {
+                if (i >= burnIn) {
                     const pointColor = bnwAttractorColor || selectedMapping.color;
                     newPoints.push({ x: currentX, y: currentY, color: pointColor });
                 }
@@ -699,6 +743,7 @@
             const settings = {
                 numIterations: document.getElementById('numIterations').value,
                 alphaValue: document.getElementById('alphaValue').value,
+                burnInPoints: document.getElementById('burnInPointsInput').value,
                 isCanvasLightMode: isCanvasLightMode,
                 isBNWTransformMode: isBNWTransformMode,
                 showTransforms: showTransforms,
@@ -718,6 +763,7 @@
                 // 1. Load Iteration Parameters
                 document.getElementById('numIterations').value = settings.numIterations;
                 document.getElementById('alphaValue').value = settings.alphaValue;
+                document.getElementById('burnInPointsInput').value = settings.burnInPoints || '20';
 
                 // 2. Load Visual Modes
                 isCanvasLightMode = settings.isCanvasLightMode;
@@ -756,6 +802,9 @@
                 document.body.classList.add('light-canvas-mode'); // Apply light mode body class
                 isBNWTransformMode = true; // Default to B&W Transform Mode
                 showTransforms = true;
+
+                // Set default N. of iterations value on initial load
+                document.getElementById('burnInPointsInput').value = '20';
 
                 // Update button texts for the new defaults
                 canvasModeToggleBtn.innerHTML = '<span class="material-icons-round">dark_mode</span>Dark Canvas';
@@ -894,7 +943,7 @@
                 : '<span class="material-icons-round">invert_colors</span>B&W Transforms';
 
             drawOverlays();
-            renderTransformationsUI(); // <-- FIX: Re-render the side panel to update the P label colors
+            renderTransformationsUI(); // FIX: Re-render the side panel to update the P label colors
             updateVisualModes();
             saveSettings();
         }
@@ -908,6 +957,99 @@
             drawOverlays();
             saveSettings();
         }
+        
+        // NEW: Function to toggle the information section visibility
+        function toggleInfo() {
+            const infoContent = document.getElementById('infoContent');
+            const btn = document.getElementById('toggleInfoBtn');
+            const isVisible = infoContent.style.display === 'block';
+
+            infoContent.style.display = isVisible ? 'none' : 'block';
+            btn.style.backgroundColor = isVisible ? '#5b5b5b' : ACCENT_RED;
+            btn.innerHTML = isVisible 
+                ? '<span class="material-icons-round">info</span> How it Works' 
+                : '<span class="material-icons-round">expand_less</span> Hide Info';
+        }
+
+        // NEW: Function to trigger file download
+        function downloadFile(content, fileName, mimeType) {
+            const a = document.createElement('a');
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // UPDATED: Function to save the IFS configuration as .json
+        function saveIFS() {
+            stopAutoIterate();
+            // Scale the coordinates back to 600x600 reference system for portability
+            const scaleFactor = 600 / CANVAS_SIZE;
+            const dataToSave = transformationRects.map(rect => ({
+                x: rect.x * scaleFactor,
+                y: rect.y * scaleFactor,
+                width: rect.width * scaleFactor,
+                height: rect.height * scaleFactor,
+                rotation: rect.rotation,
+                p: rect.p,
+                color: rect.color
+            }));
+            const content = JSON.stringify(dataToSave, null, 2);
+            downloadFile(content, 'ifs_attractor.json', 'application/json');
+        }
+
+        // UPDATED: Function to handle file selection and loading from .json
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loadedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(loadedData) || loadedData.some(item => typeof item.x !== 'number')) {
+                        throw new Error('Invalid IFS file format.');
+                    }
+
+                    stopAutoIterate();
+                    transformationRects = [];
+                    activeRectIndex = -1;
+
+                    // Scale the loaded coordinates from 600x600 reference back to current canvas size
+                    const scaleFactor = CANVAS_SIZE / 600;
+                    loadedData.forEach(rect => {
+                         // Simple validation and application
+                        transformationRects.push({
+                            x: rect.x * scaleFactor,
+                            y: rect.y * scaleFactor,
+                            width: rect.width * scaleFactor,
+                            height: rect.height * scaleFactor,
+                            rotation: rect.rotation,
+                            p: rect.p,
+                            color: rect.color
+                        });
+                    });
+
+                    renderTransformationsUI();
+                    resetCanvas(true);
+                    if (transformationRects.length > 0) {
+                        runSingleIteration();
+                    }
+                    saveSettings(); // Save the new setup to local storage
+                    alert(`Loaded ${transformationRects.length} transformations from file.`);
+
+                } catch (error) {
+                    console.error("Error loading IFS file:", error);
+                    alert("Error loading IFS file. Please ensure it is a valid JSON-formatted IFS .json file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
 
         function setActiveTransform(index) {
             activeRectIndex = index;
@@ -1333,6 +1475,17 @@
         document.getElementById('canvasModeToggleBtn').addEventListener('click', toggleCanvasTheme);
         document.getElementById('bnwToggleBtn').addEventListener('click', toggleBNWTransforms);
         document.getElementById('toggleRectsBtn').addEventListener('click', toggleShowTransforms);
+        
+        // NEW: Info button listener
+        document.getElementById('toggleInfoBtn').addEventListener('click', toggleInfo);
+
+        // NEW: File operation listeners
+        document.getElementById('saveIFSBtn').addEventListener('click', saveIFS);
+        fileInput.addEventListener('change', handleFileSelect);
+        document.getElementById('loadIFSBtn').addEventListener('click', () => {
+            fileInput.click(); // Trigger the hidden file input click
+        });
+
 
         document.getElementById('randomBtn').addEventListener('click', () => {
             stopAutoIterate();

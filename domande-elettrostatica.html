@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estrai Domande Elettrostatica</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #4f46e5;
+            --accent-hover: #4338ca;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            /*box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);*/
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        button.reset {
+            background-color: transparent;
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        button.reset:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .questions-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .questions-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .question-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .question-number {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: var(--accent-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .question-group {
+            font-family: monospace;
+            opacity: 0.7;
+        }
+
+        .question-text {
+            font-size: 1.125rem;
+            line-height: 1.6;
+        }
+
+        .question-text img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-section {
+            margin-top: 3rem;
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .histogram {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .hist-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .hist-label {
+            width: 30px;
+            text-align: right;
+            color: var(--text-secondary);
+        }
+
+        .hist-bar-wrapper {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hist-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            min-width: 2px;
+        }
+
+        .hist-count {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .error-message {
+            background-color: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Domande Elettrostatica</h1>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Generatore casuale di domande per ripasso</p>
+        </header>
+
+        <div id="error-box" class="error-message"></div>
+
+        <div class="controls">
+            <button id="pick-btn">Estrai 2 Domande</button>
+            <button id="reset-btn" class="reset">Reset Dati</button>
+        </div>
+
+        <div id="questions-display" class="questions-container">
+            <!-- Questions will appear here -->
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">
+                Premi "Estrai" per iniziare.
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <div class="stats-header">
+                <div class="stats-title">Statistiche Utilizzo</div>
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">Frequenza di estrazione</div>
+            </div>
+            <div id="histogram" class="histogram">
+                <!-- Histogram bars -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let questions = [];
+        let stats = {};
+        const STORAGE_KEY = 'elettrostatica_stats';
+
+        // Elements
+        const pickBtn = document.getElementById('pick-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const questionsDisplay = document.getElementById('questions-display');
+        const histogramEl = document.getElementById('histogram');
+        const errorBox = document.getElementById('error-box');
+
+        // Initialization
+        function init() {
+            loadStats();
+            parseQuestions(QUESTIONS_DATA);
+            renderHistogram();
+        }
+
+        // Embedded Questions Data
+        const QUESTIONS_DATA = `
+1. **{A}** Come si può generare un campo elettrico uniforme? Come varia il potenziale nella regione di spazio in cui il campo è uniforme? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
+2. **{A}** In quali condizioni il potenziale elettrico è costante? Come varia il campo in questo caso? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
+3. **{A}** Come varia il campo elettrico tra le piastre di un condensatore? Come varia il potenziale? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
+4. **{A}** Una piccola carica positiva viene posta in un punto dello spazio. Non vi è alcuna forza elettrica su di essa. Qual è il valore del campo elettrico in quel punto e come varia il potenziale in prossimità del punto? Significa che non ci sono cariche elettriche nelle vicinanze? Suggerisci una distribuzione di carica (due o più cariche) che produca un campo nullo in un punto nello spazio.
+5. **{A}** Qual è il segno delle cariche che generano il seguente campo? Disegna le superficie equipotenziali.
+    ![elettrostatica-1](elettrostatica-1.svg)
+6. **{A}** Disegna le linee del campo elettrico.
+    ![elettrostatica-2](elettrostatica-2.svg)
+7. **{A}** Qual è il segno delle cariche che generano il seguente campo? Disegna le superficie equipotenziali. 
+    ![elettrostatica-3](elettrostatica-3.svg)
+8. **{A}** Disegna il campo elettrico generato da due cariche positive e le superfici equipotenziali. Spiega in quali punti, se esistono, il campo è nullo, il potenziale è nullo, il campo è massimo, il potenziale è massimo.
+9. **{A}** Disegna il campo elettrico generato da due cariche di segno opposto e le superfici equipotenziali. Spiega in quali punti, se esistono, il campo è nullo, il potenziale è nullo, il campo è massimo, il potenziale è massimo.
+10. **{B}** Cosa succede quando un conduttore è posto in un campo elettrico esterno? Come puoi verificare la tua spiegazione?
+11. **{B}** Come si dispone la carica in eccesso su un conduttore? Per un conduttore carico, come variano, all'interno e all'esterno del conduttore, il campo e il potenziale?
+12. **{B}** Come si può proteggere un dispositivo elettronico da campi elettrici esterni? Perché gli smartphone con frame in alluminio presentano delle tacche in plastica sui bordi?
+13. **{B}** Ha senso affermare *"non c'è campo"* quando ci si trova in alta montagna? In una grotta? Perché?
+14. **{C}** Come si può costruire un condensatore? Come si carica e come si scarica? A cosa serve?
+15. **{C}** Da cosa dipende la capacità di un condensatore? Perché? Cosa succede se si collegano dei condensatori in serie? Se si collegano in parallelo?
+16. **{C}** Cosa succede quando un isolante è posto in un campo elettrico esterno? Cosa rappresenta la costante dielettrica?
+17. **{C}** Cosa sono i fulmini? Quando si verificano? Come ci si può proteggere dai fulmini?
+18. **{C}** Quando si possono osservare delle scariche elettriche? Perché a volte percepiamo una scossa quando tocchiamo i carrelli della spesa o delle maniglie metalliche? Perché queste scosse non sono particolarmente pericolose.
+`;
+
+        // Parse Markdown content
+        function parseQuestions(text) {
+            const lines = text.split('\n');
+            const parsed = [];
+            let currentQ = null;
+
+            // Regex for start of question: "1. **{Group}** Text" or "1. {Group} Text"
+            // Handles optional bolding (**) around the group
+            const startRegex = /^\s*(\d+)\.\s*(?:\*\*)?\{([^}]+)\}(?:\*\*)?\s*(.*)/;
+
+            lines.forEach(line => {
+                const match = line.match(startRegex);
+                if (match) {
+                    if (currentQ) parsed.push(currentQ);
+                    currentQ = {
+                        number: parseInt(match[1]),
+                        group: match[2].trim(),
+                        text: match[3].trim()
+                    };
+                } else if (currentQ) {
+                    // Append continuation lines
+                    const trimmed = line.trim();
+                    if (trimmed) {
+                        currentQ.text += ' ' + trimmed;
+                    }
+                }
+            });
+            if (currentQ) parsed.push(currentQ);
+
+            questions = parsed;
+            console.log(`Loaded ${questions.length} questions.`);
+            
+            if (questions.length === 0) {
+                showError("Nessuna domanda trovata nel file. Controlla il formato (es. '1. **{A}** Testo').");
+            }
+        }
+
+        // Logic to pick 2 random questions
+        function pickQuestions() {
+            if (questions.length < 2) {
+                alert("Non ci sono abbastanza domande nel file.");
+                return;
+            }
+
+            // Try to find a valid pair (different groups)
+            // To avoid infinite loops, we'll try a max number of times or use a smarter shuffle
+            let q1, q2;
+            let attempts = 0;
+            const maxAttempts = 100;
+
+            // Simple random selection with retry
+            do {
+                q1 = questions[Math.floor(Math.random() * questions.length)];
+                q2 = questions[Math.floor(Math.random() * questions.length)];
+                attempts++;
+            } while ((q1 === q2 || q1.group === q2.group) && attempts < maxAttempts);
+
+            if (q1.group === q2.group) {
+                // Fallback if we couldn't find distinct groups (e.g. all same group)
+                console.warn("Could not find questions from different groups.");
+            }
+
+            displayQuestions([q1, q2]);
+            updateStats([q1, q2]);
+        }
+
+        // Display logic
+        function displayQuestions(pair) {
+            questionsDisplay.innerHTML = pair.map(q => `
+                <div class="question-card">
+                    <div class="question-header">
+                        <span class="question-number">#${q.number}</span>
+                        <span class="question-group">Gruppo ${q.group}</span>
+                    </div>
+                    <div class="question-text">
+                        ${formatText(q.text)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Basic markdown formatting for the text
+        function formatText(text) {
+            // Convert **bold** to <b>, *italic* to <i>, `code` to <code>
+            // Convert ![alt](src) to <img>
+            return text
+                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                .replace(/`(.*?)`/g, '<code>$1</code>');
+        }
+
+        // Stats & LocalStorage
+        function loadStats() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                stats = JSON.parse(saved);
+            }
+        }
+
+        function updateStats(pair) {
+            pair.forEach(q => {
+                stats[q.number] = (stats[q.number] || 0) + 1;
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+            renderHistogram();
+        }
+
+        function resetStats() {
+            if(confirm("Sei sicuro di voler resettare tutte le statistiche?")) {
+                stats = {};
+                localStorage.removeItem(STORAGE_KEY);
+                renderHistogram();
+                questionsDisplay.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">Statistiche resettate. Premi "Estrai" per ricominciare.</div>';
+            }
+        }
+
+        function renderHistogram() {
+            // Sort by question number
+            const sortedNumbers = questions.map(q => q.number).sort((a, b) => a - b);
+            
+            if (sortedNumbers.length === 0) {
+                histogramEl.innerHTML = '<div style="text-align:center; color: var(--text-secondary);">Nessun dato disponibile</div>';
+                return;
+            }
+
+            // Find max for scaling
+            const maxCount = Math.max(...Object.values(stats), 1);
+
+            histogramEl.innerHTML = sortedNumbers.map(num => {
+                const count = stats[num] || 0;
+                const percentage = (count / maxCount) * 100;
+                return `
+                    <div class="hist-bar-container">
+                        <div class="hist-label">#${num}</div>
+                        <div class="hist-bar-wrapper">
+                            <div class="hist-bar" style="width: ${percentage}%"></div>
+                            ${count > 0 ? `<span class="hist-count">${count}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+
+        // Event Listeners
+        pickBtn.addEventListener('click', pickQuestions);
+        resetBtn.addEventListener('click', resetStats);
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
