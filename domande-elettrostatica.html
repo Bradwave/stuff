@@ -76,8 +76,16 @@
 
         .controls {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             gap: 1rem;
+            width: 100%;
+        }
+
+        .controls-secondary {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
         }
 
         button {
@@ -106,15 +114,44 @@
             fill: currentColor;
         }
 
-        button.reset {
+        #pick-btn {
+            font-size: 1.25rem;
+            padding: 1rem 3rem;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            width: 100%;
+            max-width: 400px;
+            justify-content: center;
+        }
+
+        #pick-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
             background-color: transparent;
-            border: 1px solid var(--danger-color);
-            color: var(--danger-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f3e8ff;
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        button.reset {
+            /* Override specific reset styles if needed, or merge with btn-secondary */
+            border-color: var(--border-color);
+            color: var(--text-secondary);
         }
 
         button.reset:hover {
-            background-color: var(--danger-color);
-            color: white;
+            background-color: #f3e8ff; /* Purple 100 */
+            color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
         .questions-container {
@@ -502,10 +539,46 @@
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.5; }
             100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
         }
+
+        #anim-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2000;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 0;
+        }
+
+        #anim-toggle:hover {
+            transform: scale(1.1);
+            color: var(--accent-color);
+        }
+
+        body.no-animation #interactive-bg {
+            opacity: 0;
+        }
+
+        body.no-animation .trail-dot {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="interactive-bg"></div>
+    <button id="anim-toggle" title="Attiva/Disattiva Animazioni">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width=".5"><circle cx="7" cy="17" r="4"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="4"/></svg>
+    </button>
     <div class="container" id="main-container">
         <header>
             <h1>Domande  di elettrostatica</h1>
@@ -515,13 +588,19 @@
         <div id="error-box" class="error-message"></div>
 
         <div class="controls">
+            <div class="controls-secondary">
+                <button id="sim-btn" class="btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6L13 6zM4 18l8.5-6L4 6v12z"/></svg>
+                    Simula 10k
+                </button>
+                <button id="reset-btn" class="reset btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    Reset Dati
+                </button>
+            </div>
             <button id="pick-btn">
                 <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
                 Estrai 2 Domande
-            </button>
-            <button id="reset-btn" class="reset">
-                <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                Reset Dati
             </button>
         </div>
 
@@ -532,25 +611,26 @@
             </div>
         </div>
 
-        <!-- Stats Bottom Panel -->
-        <div id="stats-panel" class="bottom-panel">
-            <!-- Toggle Button attached to panel -->
-            <div id="toggle-stats-btn" class="toggle-stats-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-            </div>
+    </div>
 
-            <div class="bottom-panel-content">
-                <!-- Removed close-btn since arrow handles it -->
-                <div class="stats-section">
-                    <div class="stats-header">
-                        <div class="stats-title">Statistiche Utilizzo</div>
-                        <div style="font-size: 0.875rem; color: var(--text-secondary);">Frequenza di estrazione</div>
-                    </div>
-                    <div id="histogram" class="histogram">
-                        <!-- Histogram bars -->
-                    </div>
+    <!-- Stats Bottom Panel (Moved outside container to avoid filter/transform issues) -->
+    <div id="stats-panel" class="bottom-panel">
+        <!-- Toggle Button attached to panel -->
+        <div id="toggle-stats-btn" class="toggle-stats-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+            </svg>
+        </div>
+
+        <div class="bottom-panel-content">
+            <!-- Removed close-btn since arrow handles it -->
+            <div class="stats-section">
+                <div class="stats-header">
+                    <div class="stats-title">Statistiche Utilizzo</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Frequenza di estrazione</div>
+                </div>
+                <div id="histogram" class="histogram">
+                    <!-- Histogram bars -->
                 </div>
             </div>
         </div>
@@ -570,6 +650,7 @@
 
         // Elements
         const pickBtn = document.getElementById('pick-btn');
+        const simBtn = document.getElementById('sim-btn');
         const resetBtn = document.getElementById('reset-btn');
         const toggleBtn = document.getElementById('toggle-stats-btn');
         const questionsDisplay = document.getElementById('questions-display');
@@ -581,12 +662,29 @@
         const lightboxClose = document.querySelector('.lightbox-close');
         const mainContainer = document.getElementById('main-container');
         const bg = document.getElementById('interactive-bg');
+        const animToggle = document.getElementById('anim-toggle');
 
         // Mouse Movement Effect & Liquid Trail
         let lastX = 0, lastY = 0;
         let lastTime = 0;
+        let animationsEnabled = localStorage.getItem('animationsEnabled') !== 'false'; // Default true
+
+        // Apply initial state
+        if (!animationsEnabled) {
+            document.body.classList.add('no-animation');
+            animToggle.style.opacity = '0.5';
+        }
+
+        animToggle.addEventListener('click', () => {
+            animationsEnabled = !animationsEnabled;
+            document.body.classList.toggle('no-animation', !animationsEnabled);
+            animToggle.style.opacity = animationsEnabled ? '1' : '0.5';
+            localStorage.setItem('animationsEnabled', animationsEnabled);
+        });
 
         document.addEventListener('mousemove', (e) => {
+            if (!animationsEnabled) return;
+
             const x = e.clientX;
             const y = e.clientY;
             
@@ -619,6 +717,7 @@
 
         // Event Listeners
         pickBtn.addEventListener('click', pickQuestions);
+        simBtn.addEventListener('click', runSimulation);
         resetBtn.addEventListener('click', resetStats);
         
         toggleBtn.onclick = function() {
@@ -733,6 +832,42 @@
             }
         }
 
+        // Helper to pick 2 questions from different groups (Equally Probable Groups)
+        function getBalancedPair() {
+            const uniqueGroups = [...new Set(questions.map(q => q.group))];
+            
+            // Fallback if we don't have enough groups
+            if (uniqueGroups.length < 2) {
+                if (questions.length < 2) return null;
+                // Just pick random pairs
+                let q1 = questions[Math.floor(Math.random() * questions.length)];
+                let q2;
+                do {
+                    q2 = questions[Math.floor(Math.random() * questions.length)];
+                } while(q1 === q2);
+                return [q1, q2];
+            }
+
+            // Pick 2 distinct groups randomly
+            let g1Index = Math.floor(Math.random() * uniqueGroups.length);
+            let g2Index;
+            do {
+                g2Index = Math.floor(Math.random() * uniqueGroups.length);
+            } while(g1Index === g2Index);
+
+            const g1 = uniqueGroups[g1Index];
+            const g2 = uniqueGroups[g2Index];
+
+            // Pick random question from each group
+            const qSet1 = questions.filter(q => q.group === g1);
+            const qSet2 = questions.filter(q => q.group === g2);
+
+            const q1 = qSet1[Math.floor(Math.random() * qSet1.length)];
+            const q2 = qSet2[Math.floor(Math.random() * qSet2.length)];
+
+            return [q1, q2];
+        }
+
         // Logic to pick 2 random questions
         function pickQuestions() {
             if (questions.length < 2) {
@@ -740,26 +875,13 @@
                 return;
             }
 
-            // Try to find a valid pair (different groups)
-            // To avoid infinite loops, we'll try a max number of times or use a smarter shuffle
-            let q1, q2;
-            let attempts = 0;
-            const maxAttempts = 100;
-
-            // Simple random selection with retry
-            do {
-                q1 = questions[Math.floor(Math.random() * questions.length)];
-                q2 = questions[Math.floor(Math.random() * questions.length)];
-                attempts++;
-            } while ((q1 === q2 || q1.group === q2.group) && attempts < maxAttempts);
-
-            if (q1.group === q2.group) {
-                // Fallback if we couldn't find distinct groups (e.g. all same group)
-                console.warn("Could not find questions from different groups.");
+            const pair = getBalancedPair();
+            if (pair) {
+                displayQuestions(pair);
+                updateStats(pair);
+            } else {
+                console.error("Could not generate pair");
             }
-
-            displayQuestions([q1, q2]);
-            updateStats([q1, q2]);
         }
 
         // Display logic
@@ -802,6 +924,31 @@
             });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
             renderHistogram();
+        }
+
+        function runSimulation() {
+            if (questions.length < 2) {
+                alert("Non ci sono abbastanza domande.");
+                return;
+            }
+            
+            const N = 10000;
+            
+            for (let i = 0; i < N; i++) {
+                const pair = getBalancedPair();
+                if (pair) {
+                    pair.forEach(q => {
+                        stats[q.number] = (stats[q.number] || 0) + 1;
+                    });
+                }
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+            renderHistogram();
+            // Optional: Auto-open panel to show results
+            if (!panel.classList.contains('open')) {
+                panel.classList.add('open');
+            }
         }
 
         function resetStats() {

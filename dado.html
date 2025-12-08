@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lancio Dado</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-color: #faf5ff; /* Purple 50 */
+            --card-bg: #ffffff;
+            --text-primary: #3b0764; /* Purple 950 */
+            --text-secondary: #7e22ce; /* Purple 700 */
+            --accent-color: #7c3aed; /* Violet 600 */
+            --accent-hover: #6d28d9; /* Violet 700 */
+            --success-color: #a855f7; /* Purple 500 */
+            --danger-color: #c026d3; /* Fuchsia 600 */
+            --border-color: #e9d5ff; /* Purple 200 */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            transition: filter 0.3s ease;
+        }
+
+        .container.blur-active {
+            filter: blur(8px);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: .5rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, #7c3aed, #c026d3);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .config-row {
+            min-height: 95px;
+            align-items: flex-start;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--card-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(124, 58, 237, 0.05);
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .input-group input {
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            width: 60px;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+        }
+
+        /* Toggle Switch */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--card-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(124, 58, 237, 0.05);
+            cursor: pointer;
+        }
+
+        .toggle-wrapper label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background-color: var(--border-color);
+            border-radius: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .toggle-checkbox {
+            display: none;
+        }
+
+        .toggle-checkbox:checked + .toggle-switch {
+            background-color: var(--accent-color);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .toggle-checkbox:checked + .toggle-switch::after {
+            transform: translateX(20px);
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        #roll-btn {
+            font-size: 1.25rem;
+            padding: 1rem 3rem;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            width: 100%;
+            max-width: 400px;
+            justify-content: center;
+        }
+
+        #roll-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f3e8ff;
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .display-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 2rem;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px -5px rgba(124, 58, 237, 0.15);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 200px;
+            height: 200px;
+            position: relative;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.8) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .result-number {
+            font-size: 6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7c3aed, #c026d3);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .result-label {
+            margin-top: 1rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Bottom Panel Styles */
+        .bottom-panel {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            width: 95%;
+            max-width: 1000px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.1);
+            z-index: 1000;
+            transform: translateX(-50%) translateY(calc(100% - 0.5rem));
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bottom-panel.open {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .bottom-panel-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            padding: 2rem;
+            box-sizing: border-box;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .toggle-stats-btn {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            background-color: var(--accent-color);
+            border: 4px solid var(--bg-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+            transition: background-color 0.2s;
+            z-index: 1002;
+        }
+
+        .toggle-stats-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .toggle-stats-btn svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .bottom-panel.open .toggle-stats-btn svg {
+            transform: rotate(180deg);
+        }
+
+        .stats-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        /* Histogram */
+        .histogram {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .hist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .hist-label {
+            width: 50px;
+            text-align: right;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .hist-bar-wrapper {
+            flex: 1;
+            background-color: #f3e8ff;
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hist-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            min-width: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+        }
+
+        .hist-count {
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        /* Combined Panel */
+        .merged-control-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .controls-inner-row {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .vertical-divider {
+            width: 1px;
+            height: 40px;
+            background-color: var(--border-color);
+        }
+
+        /* Adjustments for children inside merged panel */
+        .merged-control-panel .input-group,
+        .merged-control-panel .toggle-wrapper {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        /* Shared Warning Animation */
+        .shared-warning {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-align: center;
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .merged-control-panel:hover .shared-warning,
+        .merged-control-panel:focus-within .shared-warning {
+            max-height: 30px;
+            opacity: 1;
+            margin-top: 0.75rem;
+        }
+        
+        /* Trail & Anim Toggle */
+
+        .faces-control-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* Removed old faces-warning specific styles as we replaced it */
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(59, 7, 100, 0.5); /* Deep purple tint */
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 400px;
+            width: 80%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .modal-backdrop.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            margin-top: 0;
+        }
+
+        .modal-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        /* Override button styles for modal specifically if needed */
+        .modal-actions button {
+            min-width: 100px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    
+    <div class="container" id="main-container">
+        <header>
+            <h1>Lancio dado</h1>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Generatore di numeri casuali</p>
+        </header>
+
+        <div class="controls">
+            <!-- Row 1: Merged Config -->
+            <div class="controls-row config-row">
+                <div class="merged-control-panel">
+                    <div class="controls-inner-row">
+                        <label class="toggle-wrapper" for="no-dup-check">
+                            <input type="checkbox" id="no-dup-check" class="toggle-checkbox">
+                            <div class="toggle-switch"></div>
+                            <span style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">No duplicati</span>
+                        </label>
+
+                        <div class="vertical-divider"></div>
+
+                        <div class="faces-control-wrapper">
+                            <div class="input-group">
+                                <label for="faces-input">Facce:</label>
+                                <input type="number" id="faces-input" min="2" value="6">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="shared-warning">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                        <span>Modificare le impostazioni resetta le statistiche</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Row 2: Secondary Actions -->
+            <div class="controls-row">
+                <button id="sim-btn" class="btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6L13 6zM4 18l8.5-6L4 6v12z"/></svg>
+                    Simula 10k
+                </button>
+                <button id="reset-btn" class="btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    Reset Dati
+                </button>
+            </div>
+
+            <!-- Row 3: Main Action -->
+            <button id="roll-btn">
+                <svg viewBox="0 0 24 24"><path d="M5 3C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5zm0 2h14v14H5V5zm7 9a2 2 0 100-4 2 2 0 000 4zm-5-5a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4zm-5 5a2 2 0 100-4 2 2 0 000 4zm-5 5a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                Lancia
+            </button>
+        </div>
+
+        <div class="display-container">
+            <div id="result-area">
+                <!-- Result Card injected here -->
+                <div style="color: var(--text-secondary); text-align: center;">Premi "Lancia" per iniziare</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 class="modal-title">Attenzione</h3>
+            <p class="modal-message"></p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn-secondary">Annulla</button>
+                <button id="modal-confirm">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel" class="bottom-panel">
+        <div id="toggle-stats-btn" class="toggle-stats-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+            </svg>
+        </div>
+
+        <div class="bottom-panel-content">
+            <div class="stats-header">
+                <div class="stats-title">Statistiche Lanci</div>
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">Frequenza di uscita</div>
+            </div>
+            <div id="histogram" class="histogram">
+                <!-- Histogram bars -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let stats = {};
+        let currentFaces = 6;
+        let drawnNumbers = new Set();
+        const STORAGE_KEY = 'dado_stats';
+        const FACES_KEY = 'dado_faces';
+
+        // Elements
+        const rollBtn = document.getElementById('roll-btn');
+        const simBtn = document.getElementById('sim-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const facesInput = document.getElementById('faces-input');
+        const noDupCheck = document.getElementById('no-dup-check');
+        const resultArea = document.getElementById('result-area');
+        const histogramEl = document.getElementById('histogram');
+        const panel = document.getElementById('stats-panel');
+        const toggleBtn = document.getElementById('toggle-stats-btn');
+        
+        // Modal Elements
+        const modal = document.getElementById('custom-modal');
+        const modalMsg = modal.querySelector('.modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm');
+        const modalCancelBtn = document.getElementById('modal-cancel');
+        let modalKeyHandler = null;
+
+        // Logic
+        function showModal(msg, isConfirm = false, onConfirm = null) {
+            modalMsg.textContent = msg;
+            modal.classList.add('active');
+            
+            // Remove previous listener if exists
+            if (modalKeyHandler) document.removeEventListener('keydown', modalKeyHandler);
+
+            modalKeyHandler = (e) => {
+                if (!modal.classList.contains('active')) return;
+                
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeModal();
+                    if (isConfirm && onConfirm) onConfirm(false);
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    closeModal();
+                    if (isConfirm && onConfirm) onConfirm(true);
+                }
+            };
+            document.addEventListener('keydown', modalKeyHandler);
+            
+            if (isConfirm) {
+                modalCancelBtn.style.display = 'inline-flex';
+                modalConfirmBtn.textContent = 'Conferma';
+                
+                // One-time listeners for buttons
+                modalConfirmBtn.onclick = () => {
+                    closeModal();
+                    if (onConfirm) onConfirm(true);
+                };
+                modalCancelBtn.onclick = () => {
+                    closeModal();
+                    if (onConfirm) onConfirm(false);
+                };
+            } else {
+                modalCancelBtn.style.display = 'none';
+                modalConfirmBtn.textContent = 'OK';
+                modalConfirmBtn.onclick = closeModal;
+            }
+            
+            // Focus confirm button for accessibility
+            modalConfirmBtn.focus();
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            if (modalKeyHandler) {
+                document.removeEventListener('keydown', modalKeyHandler);
+                modalKeyHandler = null;
+            }
+        }
+        function loadData() {
+            const savedFaces = localStorage.getItem(FACES_KEY);
+            const savedStats = localStorage.getItem(STORAGE_KEY);
+
+            if (savedFaces) {
+                currentFaces = parseInt(savedFaces);
+                facesInput.value = currentFaces;
+            }
+
+            if (savedStats) {
+                // If saved stats exist, verify they match the current faces count logic if needed
+                // But simplified: if face count changes, we wipe stats. So if faces match, stats are valid.
+                stats = JSON.parse(savedStats);
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+            localStorage.setItem(FACES_KEY, currentFaces);
+        }
+
+        function resetData() {
+            stats = {};
+            drawnNumbers.clear();
+            // Don't reset faces count, just stats
+            saveData();
+            renderHistogram();
+            resultArea.innerHTML = '<div style="color: var(--text-secondary); text-align: center;">Dati resettati</div>';
+        }
+
+        function handleFacesChange() {
+            let val = parseInt(facesInput.value);
+            if (isNaN(val) || val < 2) val = 2;
+            
+            if (val !== currentFaces) {
+                currentFaces = val;
+                facesInput.value = val;
+                resetData();
+                resultArea.innerHTML = '<div style="color: var(--text-secondary); text-align: center;">Nuova configurazione pronta</div>';
+            }
+        }
+
+        function rollDice() {
+            const noDup = noDupCheck.checked;
+            
+            if (noDup && drawnNumbers.size >= currentFaces) {
+                showModal("Tutti i numeri sono stati estratti! Resetta per ricominciare.");
+                return;
+            }
+
+            let result;
+            if (noDup) {
+                do {
+                    result = Math.floor(Math.random() * currentFaces) + 1;
+                } while (drawnNumbers.has(result));
+                drawnNumbers.add(result);
+            } else {
+                result = Math.floor(Math.random() * currentFaces) + 1;
+            }
+
+            stats[result] = (stats[result] || 0) + 1;
+            saveData();
+            
+            // Render Result
+            resultArea.innerHTML = `
+                <div class="result-card">
+                    <div class="result-number">${result}</div>
+                    <div class="result-label">Risultato</div>
+                    ${noDup ? `<div style="font-size:0.8rem; margin-top:0.5rem; color:var(--text-secondary)">Estratti: ${drawnNumbers.size}/${currentFaces}</div>` : ''}
+                </div>
+            `;
+            
+            renderHistogram();
+        }
+
+        function runSimulation() {
+            // Simulation ignores "No Duplicates" for simplicity as it's meant to show probability distribution
+            if (noDupCheck.checked) {
+                showModal("La simulazione non supporta la modalità 'No Duplicati' (è progettata per mostrare la distribuzione di probabilità su grandi numeri).");
+                return;
+            }
+            
+            const N = 10000;
+            for(let i=0; i<N; i++) {
+                const r = Math.floor(Math.random() * currentFaces) + 1;
+                stats[r] = (stats[r] || 0) + 1;
+            }
+            saveData();
+            renderHistogram();
+            if (!panel.classList.contains('open')) panel.classList.add('open');
+        }
+
+        function renderHistogram() {
+            // Ensure we have entries for all faces 1..currentFaces in visual even if 0 count? 
+            // Yes, user expects to see all faces.
+            
+            const maxCount = Math.max(...Object.values(stats), 1);
+            let html = '';
+
+            for (let i = 1; i <= currentFaces; i++) {
+                const count = stats[i] || 0;
+                const percentage = (count / maxCount) * 100;
+                
+                html += `
+                    <div class="hist-item">
+                        <div class="hist-label">#${i}</div>
+                        <div class="hist-bar-wrapper">
+                            <div class="hist-bar" style="width: ${percentage}%">
+                                ${count > 0 ? `<span class="hist-count">${count}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            histogramEl.innerHTML = html;
+        }
+
+        // Event Listeners
+        rollBtn.addEventListener('click', rollDice);
+        simBtn.addEventListener('click', runSimulation);
+        resetBtn.addEventListener('click', () => {
+            showModal("Sei sicuro di voler resettare tutte le statistiche?", true, (confirmed) => {
+                if (confirmed) resetData();
+            });
+        });
+        
+        
+        facesInput.addEventListener('change', handleFacesChange);
+        noDupCheck.addEventListener('change', () => {
+             // Changing mode resets stats as per latest requirement
+             showModal("Cambiare modalità resetterà i dati correnti. Continuare?", true, (confirmed) => {
+                 if (confirmed) {
+                     resetData();
+                 } else {
+                     // Revert Toggle
+                     noDupCheck.checked = !noDupCheck.checked;
+                 }
+             });
+        });
+        // Also handle "Enter" on input? 'change' covers blur/enter usually.
+
+        toggleBtn.onclick = function() {
+            panel.classList.toggle('open');
+        }
+
+        // Init
+        loadData();
+        renderHistogram();
+
+    </script>
+</body>
+</html>
