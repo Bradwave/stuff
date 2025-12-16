@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing to XY Arrays</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231484e6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='M2 2l7.5 7.5'/%3E%3Cpath d='M13 18l-3 3-3-3'/%3E%3C/svg%3E">
+    <!-- Import Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        :root {
+            /* Motus Palette */
+            --color-bg: #ffffff;
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #555555;
+            --color-accent: #1484e6;
+            --color-accent-dark: #0f6cb8;
+            --color-bg-track: #f7f9fb;
+            --color-border: #e0e0e0;
+            --font-mono: 'Space Mono', monospace;
+            --radius-md: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        ::selection {
+            background: var(--color-accent);
+            color: #ffffff;
+        }
+
+        /* Minimal Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #bdbdbd;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 800px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 50vh; /* split canvas / settings */
+            }
+            .sidebar {
+                border-right: none;
+                border-top: 1px solid var(--color-border);
+                order: 2;
+            }
+            .canvas-wrapper {
+                order: 1;
+            }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background-color: #ffffff;
+            border-right: 1px solid var(--color-border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.02);
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            margin: 0 0 0.5rem 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        header a {
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+
+        /* Section Headings */
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-text-muted);
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Tighter inputs row */
+        .inputs-compact {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Inputs & Sliders */
+        input[type="number"] {
+            padding: 6px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            width: 70px;
+            font-size: 0.85rem;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--color-accent);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--color-border);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Motus-style Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 24px;
+        }
+        .toggle-switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input:checked + .slider {
+            background-color: var(--color-accent);
+        }
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+
+        button {
+            background-color: var(--color-bg);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        button:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+            background-color: #f0f7ff;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        button.primary {
+            background-color: var(--color-accent);
+            color: white;
+            border: none;
+        }
+
+        button.primary:hover {
+            background-color: var(--color-accent-dark);
+        }
+
+        button.danger:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            background-color: #fef2f2;
+        }
+        
+        button.icon-only {
+            padding: 6px;
+        }
+
+        /* Tool Toggle */
+        .tool-toggle {
+            display: flex;
+            background: var(--color-bg-track);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            gap: 4px;
+        }
+
+        .tool-option {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tool-option.active {
+            background: white;
+            color: var(--color-accent);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Output Area */
+        .output-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .output-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+        }
+
+        .copy-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .copy-btn {
+            height: 24px;
+            padding: 0 8px;
+            font-size: 0.7rem;
+        }
+        .copy-btn .material-symbols-outlined { font-size: 14px; }
+
+        textarea {
+            width: 100%;
+            height: 70px;
+            padding: 10px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            background-color: var(--color-bg-track);
+            color: var(--color-text-muted);
+            line-height: 1.4;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: 1px solid var(--color-accent);
+            background-color: white;
+        }
+
+        /* Canvas Area */
+        .canvas-wrapper {
+            background-color: var(--color-bg-track);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Hide overflow for pan/zoom */
+            touch-action: none; /* Prevent browser handling */
+            
+            /* Dots Pattern */
+            background-image: 
+                radial-gradient(var(--color-border) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        canvas {
+            /* Canvas is now a viewport, transparent background */
+            background-color: transparent; 
+            /* No shadow on canvas element itself, we draw "paper" with shadow */
+            box-shadow: none; 
+            cursor: crosshair;
+            display: block;
+            touch-action: none;
+        }
+
+        /* Grid Overlay on Canvas - REMOVED CSS GRID, Drawn in Canvas */
+        /* canvas.show-grid {} */
+
+        .canvas-wrapper.mode-select canvas {
+            cursor: default;
+        }
+        
+        #reset-view-btn {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid var(--color-border);
+            z-index: 200;
+            color: var(--color-text-muted);
+            transition: all 0.2s;
+        }
+        #reset-view-btn:hover {
+            color: var(--color-accent);
+            transform: scale(1.1);
+        }
+
+        /* Helpers */
+        /* Canvas is now fullscreen in wrapper, but we still need brush visuals to act correctly */
+        /* They are updated in js */
+        #brush-helper {
+            position: absolute;
+            pointer-events: none;
+            border: 2px solid rgba(20, 132, 230, 0.8);
+            background-color: rgba(20, 132, 230, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 10000000; /* High Z-index */
+            transition: width 0.1s, height 0.1s, opacity 0.2s;;
+        }
+        
+        #desktop-hint {
+            transition: opacity 1s ease-in-out;
+        }
+
+        #brush-point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--color-accent);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+            z-index: 101;
+        }
+
+        #mouse-target {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border: 2px solid rgba(0, 0, 0, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+            z-index: 102;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <header>
+                <h1>XY DRAWING TOOL</h1>
+                <p>Based on <a href="https://lazybrush.dulnan.net/" target="_blank">Lazy Brush</a> by Dulnan.</p>
+            </header>
+
+            <!-- GROUP 1: CANVAS SETTINGS -->
+            <div class="section-title">Canvas Settings</div>
+            <div class="control-group">
+                <div class="control-row">
+                    <span class="control-label">Size</span>
+                    <div class="inputs-compact">
+                        <input type="number" id="width-input" value="400" title="Width">
+                        <span style="color: var(--color-text-muted)">x</span>
+                        <input type="number" id="height-input" value="600" title="Height">
+                    </div>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Grid</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="grid-check">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Cartesian Axis</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cartesian-check">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <button id="create-btn" class="primary" style="width: 100%; margin-top: 4px;">
+                    <span class="material-symbols-outlined">crop_free</span>
+                    Update Canvas
+                </button>
+            </div>
+
+
+            <!-- GROUP 2: BRUSH SETTINGS -->
+            <div class="section-title" style="margin-top: 12px;">Brush & Mode</div>
+            <div class="control-group">
+                <div class="tool-toggle">
+                    <div class="tool-option active" id="mode-draw" onclick="setMode('draw')">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">draw</span> DRAW
+                    </div>
+                    <div class="tool-option" id="mode-select" onclick="setMode('select')">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">near_me</span> SELECT
+                    </div>
+                </div>
+
+                <div class="control-item">
+                    <div class="control-label">Lazy Radius: <span id="radius-val">30</span></div>
+                    <input type="range" id="radius-slider" min="0" max="100" value="30">
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-label">Brush Size: <span id="brush-size-val">3</span></div>
+                    <input type="range" id="brush-size-slider" min="1" max="20" step="1" value="3">
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-label">Friction: <span id="friction-val">0.4</span></div>
+                    <input type="range" id="friction-slider" min="0.05" max="1" step="0.05" value="0.4">
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button id="delete-btn" class="danger" disabled style="flex: 1;">
+                        <span class="material-symbols-outlined">delete</span>
+                        Delete Sel.
+                    </button>
+                    <button id="clear-btn" style="flex: 1;">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- GROUP 3: DFT ANALYSIS -->
+            <div class="section-title" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>DFT Analysis</span>
+                 <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.7rem; text-transform: none; font-weight: 400;">Decimals:</span>
+                    <input type="number" id="dft-decimals-input" value="2" min="0" max="10" style="width: 40px; padding: 2px 4px; font-size: 0.8rem;">
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="control-row">
+                    <span class="control-label">Coefficients (N)</span>
+                    <input type="number" id="dft-n-input" value="10" min="1" step="1" title="Order">
+                </div>
+                <input type="range" id="dft-n-slider" min="1" max="100" step="1" value="10">
+                
+
+                
+                <p style="font-size: 0.7rem; color: var(--color-text-muted); margin: 8px 0 0 0;">
+                    Order: 0, 1, -1, 2, -2 ...
+                </p>
+                
+                <!-- DFT Outputs -->
+                <div class="output-group">
+                    <div class="output-header">
+                        <span class="output-label">Indices (n)</span>
+                        <div class="copy-actions">
+                            <button class="copy-btn icon-only" id="copy-n-data" title="Copy Array"><span class="material-symbols-outlined">data_array</span></button>
+                            <button class="copy-btn icon-only" id="copy-n-full" title="Copy Full"><span class="material-symbols-outlined">content_copy</span></button>
+                        </div>
+                    </div>
+                    <textarea id="n-output" readonly></textarea>
+                </div>
+                <div class="output-group">
+                    <div class="output-header">
+                        <span class="output-label">Magnitude (r)</span>
+                        <div class="copy-actions">
+                            <button class="copy-btn icon-only" id="copy-r-data" title="Copy Array"><span class="material-symbols-outlined">data_array</span></button>
+                            <button class="copy-btn icon-only" id="copy-r-full" title="Copy Full"><span class="material-symbols-outlined">content_copy</span></button>
+                        </div>
+                    </div>
+                    <textarea id="r-output" readonly></textarea>
+                </div>
+
+                <div class="output-group">
+                    <div class="output-header">
+                        <span class="output-label">Phase (phi)</span>
+                        <div class="copy-actions">
+                            <button class="copy-btn icon-only" id="copy-phi-data" title="Copy Array"><span class="material-symbols-outlined">data_array</span></button>
+                            <button class="copy-btn icon-only" id="copy-phi-full" title="Copy Full"><span class="material-symbols-outlined">content_copy</span></button>
+                        </div>
+                    </div>
+                    <textarea id="phi-output" readonly></textarea>
+                </div>
+            </div>
+
+
+            <!-- GROUP 4: COORDINATES -->
+            <div class="section-title" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Coordinates</span>
+                 <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.7rem; text-transform: none; font-weight: 400;">Decimals:</span>
+                    <input type="number" id="coord-decimals-input" value="2" min="0" max="10" style="width: 40px; padding: 2px 4px; font-size: 0.8rem;">
+                </div>
+            </div>
+            <div class="control-group">
+                
+                <div class="output-group">
+                    <div class="output-header">
+                        <span class="output-label">X Coords</span>
+                        <div class="copy-actions">
+                            <button class="copy-btn icon-only" id="copy-x-data" title="Copy Array"><span class="material-symbols-outlined">data_array</span></button>
+                            <button class="copy-btn icon-only" id="copy-x-full" title="Copy Full"><span class="material-symbols-outlined">content_copy</span></button>
+                        </div>
+                    </div>
+                    <textarea id="x-output" readonly onclick="this.select()"></textarea>
+                </div>
+                
+                <div class="output-group">
+                    <div class="output-header">
+                        <span class="output-label">Y Coords</span>
+                        <div class="copy-actions">
+                            <button class="copy-btn icon-only" id="copy-y-data" title="Copy Array"><span class="material-symbols-outlined">data_array</span></button>
+                            <button class="copy-btn icon-only" id="copy-y-full" title="Copy Full"><span class="material-symbols-outlined">content_copy</span></button>
+                        </div>
+                    </div>
+                    <textarea id="y-output" readonly onclick="this.select()"></textarea>
+                </div>
+            </div>
+            
+            <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--color-border);">
+                 <button id="reset-storage-btn" class="danger" style="width: 100%;">
+                    <span class="material-symbols-outlined">restart_alt</span>
+                    Reset App & Clear Data
+                </button>
+            </div>
+            
+            <div style="height: 24px;"></div> <!-- Spacer -->
+        </aside>
+
+        <!-- Canvas Area -->
+        <main class="canvas-wrapper" id="canvas-wrapper">
+            <div id="canvas-placeholder" style="color: var(--color-text-muted); font-size: 0.9rem;">
+                Set size and click Update Canvas
+            </div>
+            
+            <div id="desktop-hint" style="position: absolute; bottom: 12px; left: 16px; font-size: 0.75rem; color: var(--color-text-muted); opacity: 0.7; pointer-events: none;">
+                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 14px;">mouse</span> 
+                Scroll to Zoom • Ctrl+Drag to Pan
+            </div>
+            <style>
+                /* Only show on devices with fine pointer (mouse) */
+                @media (pointer: coarse) {
+                    #desktop-hint { display: none; }
+                }
+            </style>
+            
+            <!-- Drawing aids -->
+            <div id="brush-helper"></div>
+            <div id="brush-point"></div>
+            <div id="mouse-target"></div>
+            
+            <!-- Reset Zoom Button -->
+            <button id="reset-view-btn" title="Reset View" style="display: none;">
+                <span class="material-symbols-outlined">center_focus_strong</span>
+            </button>
+        </main>
+    </div>
+
+    <script>
+        // -- Configuration --
+        let state = {
+            mode: 'draw',
+            radius: 30,
+            friction: 0.4,
+            brushSize: 3,
+            isDrawing: false,
+            // Paper Size
+            width: 400,
+            height: 600,
+            scaleFactor: 2, // HiDPI
+            cartesian: false,
+            dftN: 10,
+            dftDecimals: 2,
+            coordDecimals: 2
+        };
+        
+        let isDragging = false;
+        let dragLastPos = { x: 0, y: 0 };
+        
+        // View State for Pan/Zoom
+        let viewState = {
+            scale: 1,
+            x: 0,
+            y: 0
+        };
+
+        // Data
+        let curves = []; // { points: [{x,y}], brushSize: int }
+        let currentPoints = [];
+        let selectedIndex = -1;
+
+        let canvas, ctx;
+        
+        // Lazy Brush
+        let pointer = { x: 0, y: 0 };
+        let brush = { x: 0, y: 0 };
+
+        // DOM Elements
+        const wrapper = document.getElementById('canvas-wrapper');
+        const radiusSlider = document.getElementById('radius-slider');
+        const frictionSlider = document.getElementById('friction-slider');
+        const brushSizeSlider = document.getElementById('brush-size-slider');
+        const dftNSlider = document.getElementById('dft-n-slider');
+        const dftNInput = document.getElementById('dft-n-input');
+        const dftDecimalsInput = document.getElementById('dft-decimals-input');
+        const coordDecimalsInput = document.getElementById('coord-decimals-input');
+        
+        const radiusVal = document.getElementById('radius-val');
+        const frictionVal = document.getElementById('friction-val');
+        const brushSizeVal = document.getElementById('brush-size-val');
+        
+        const deleteBtn = document.getElementById('delete-btn');
+        const gridCheck = document.getElementById('grid-check');
+        const cartesianCheck = document.getElementById('cartesian-check');
+        const resetViewBtn = document.getElementById('reset-view-btn');
+        
+        const helper = document.getElementById('brush-helper');
+        const brushPoint = document.getElementById('brush-point');
+        const mouseTarget = document.getElementById('mouse-target');
+
+        // -- Event Listeners --
+        document.getElementById('create-btn').onclick = initCanvas;
+        document.getElementById('clear-btn').onclick = clearAll;
+        deleteBtn.onclick = deleteSelected;
+        
+        function centerCanvas() {
+            if(!wrapper || !canvas) return;
+            const rect = wrapper.getBoundingClientRect();
+            // Default center logic: 
+            // We want paper centered with some margin (scale 0.8 is good default)
+            const startScale = 0.8;
+            viewState.scale = startScale;
+            viewState.x = (rect.width - state.width * startScale) / 2;
+            viewState.y = (rect.height - state.height * startScale) / 2;
+            
+            // Round to avoid blurry edges if not using hiDPI (but we are)
+            viewState.x = Math.round(viewState.x);
+            viewState.y = Math.round(viewState.y);
+            updateViewTransform();
+            saveState();
+        }
+
+        resetViewBtn.onclick = centerCanvas;
+        
+        // Save options on change
+        gridCheck.onchange = (e) => {
+            if (canvas) {
+                if (e.target.checked) canvas.classList.add('show-grid');
+                else canvas.classList.remove('show-grid');
+            }
+            saveState();
+        };
+        
+        cartesianCheck.onchange = (e) => {
+            state.cartesian = e.target.checked;
+            redraw();
+            updateOutputs();
+            updateDFT();
+            saveState();
+        };
+
+        // Sliders
+        radiusSlider.oninput = (e) => {
+            state.radius = parseInt(e.target.value);
+            radiusVal.innerText = state.radius;
+            updateHelperSize();
+            saveState(); // Save live
+        };
+        frictionSlider.oninput = (e) => {
+            state.friction = parseFloat(e.target.value);
+            frictionVal.innerText = state.friction;
+            saveState();
+        };
+        brushSizeSlider.oninput = (e) => {
+            state.brushSize = parseInt(e.target.value);
+            brushSizeVal.innerText = state.brushSize;
+            saveState();
+        };
+        
+        // DFT Sliders
+        dftNSlider.oninput = (e) => {
+            let val = parseInt(e.target.value);
+            state.dftN = val;
+            dftNInput.value = val;
+            updateDFT();
+            saveState();
+        }
+        dftNInput.onchange = (e) => {
+            let val = parseInt(e.target.value);
+            state.dftN = val;
+            dftNSlider.value = val;
+            updateDFT();
+            saveState();
+        }
+        
+        // Decimals
+        dftDecimalsInput.onchange = (e) => {
+            let val = parseInt(e.target.value);
+            if(val < 0) val = 0; if(val > 10) val = 10;
+            state.dftDecimals = val;
+            updateDFT();
+            saveState();
+        }
+
+        coordDecimalsInput.onchange = (e) => {
+            let val = parseInt(e.target.value);
+            if(val < 0) val = 0; if(val > 10) val = 10;
+            state.coordDecimals = val;
+            updateOutputs();
+            saveState();
+        }
+
+
+        // Copy Handlers
+        function setupCopy(id, targetId, mode) {
+            const btn = document.getElementById(id);
+            if(!btn) return;
+            btn.onclick = () => {
+                const txt = document.getElementById(targetId).value;
+                if (!txt) return;
+
+                if (mode === 'data') {
+                    const match = txt.match(/\[(.*)\]/s);
+                    if (match) navigator.clipboard.writeText('[' + match[1] + ']');
+                } else {
+                    navigator.clipboard.writeText(txt);
+                }
+            };
+        }
+        setupCopy('copy-x-data', 'x-output', 'data');
+        setupCopy('copy-x-full', 'x-output', 'full');
+        setupCopy('copy-y-data', 'y-output', 'data');
+        setupCopy('copy-y-full', 'y-output', 'full');
+        
+        setupCopy('copy-n-data', 'n-output', 'data');
+        setupCopy('copy-n-full', 'n-output', 'full');
+        setupCopy('copy-r-data', 'r-output', 'data');
+        setupCopy('copy-r-full', 'r-output', 'full');
+        setupCopy('copy-phi-data', 'phi-output', 'data');
+        setupCopy('copy-phi-full', 'phi-output', 'full');
+
+        function setMode(mode) {
+            state.mode = mode;
+            document.getElementById('mode-draw').classList.toggle('active', mode === 'draw');
+            document.getElementById('mode-select').classList.toggle('active', mode === 'select');
+
+            if (canvas) {
+                wrapper.className = 'canvas-wrapper mode-' + mode;
+            }
+
+            if (mode === 'draw') {
+                selectedIndex = -1;
+                updateUIState();
+                redraw();
+            }
+
+            if (mode === 'select') {
+                helper.style.display = 'none';
+                brushPoint.style.display = 'none';
+                mouseTarget.style.display = 'none';
+            }
+        }
+
+    // Load State from LocalStorage
+    const saved = localStorage.getItem('drawingApp_v1');
+    if(saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            state = { ...state, ...parsed.state };
+            curves = parsed.curves || [];
+            if(parsed.viewState) viewState = parsed.viewState;
+            
+            // Ensure safety flags
+            state.isDrawing = false;
+            
+            // Update UI from loaded state
+            document.getElementById('width-input').value = state.width;
+            document.getElementById('height-input').value = state.height;
+            document.getElementById('radius-slider').value = state.radius;
+            document.getElementById('radius-val').innerText = state.radius;
+            document.getElementById('friction-slider').value = state.friction;
+            document.getElementById('friction-val').innerText = state.friction;
+            document.getElementById('brush-size-slider').value = state.brushSize;
+            document.getElementById('brush-size-slider').value = state.brushSize;
+            document.getElementById('brush-size-val').innerText = state.brushSize;
+            
+            if(state.dftDecimals !== undefined) document.getElementById('dft-decimals-input').value = state.dftDecimals;
+            if(state.coordDecimals !== undefined) document.getElementById('coord-decimals-input').value = state.coordDecimals;
+            
+            // Options
+            if (parsed.options) {
+                gridCheck.checked = parsed.options.grid;
+                state.grid = parsed.options.grid; // Ensure state tracks it if needed
+            }
+            cartesianCheck.checked = state.cartesian;
+            
+        } catch(e) { console.error("Load error", e); }
+    }
+
+    function saveState() {
+        const payload = {
+            state: state,
+            curves: curves,
+            viewState: viewState,
+            options: {
+                grid: gridCheck.checked
+            }
+        };
+        localStorage.setItem('drawingApp_v1', JSON.stringify(payload));
+    }
+    
+    document.getElementById('reset-storage-btn').onclick = () => {
+        if(confirm('Are you sure? This will delete all drawings and reset settings.')) {
+            localStorage.removeItem('drawingApp_v1');
+            location.reload();
+        }
+    };
+
+    function initCanvas() {
+        // Update state from inputs (if not loaded, defaults)
+        state.width = parseInt(document.getElementById('width-input').value);
+        state.height = parseInt(document.getElementById('height-input').value);
+
+        wrapper.innerHTML = '';
+        wrapper.appendChild(helper);
+        wrapper.appendChild(brushPoint);
+        wrapper.appendChild(mouseTarget);
+        wrapper.appendChild(resetViewBtn);
+        
+        // Re-append Desktop Hint
+        const hint = document.createElement('div');
+        hint.id = 'desktop-hint';
+        hint.style.cssText = 'position: absolute; bottom: 12px; left: 16px; font-size: 0.75rem; color: var(--color-text-muted); opacity: 0.7; pointer-events: none; transition: opacity 1s ease-in-out;';
+        hint.innerHTML = '<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 14px;">mouse</span> Scroll to Zoom • Ctrl+Drag to Pan';
+        wrapper.appendChild(hint);
+        
+        // Auto-hide hint after 10s
+        setTimeout(() => {
+            if(document.getElementById('desktop-hint')) {
+                document.getElementById('desktop-hint').style.opacity = '0';
+            }
+        }, 10000);
+
+        canvas = document.createElement('canvas');
+        if (gridCheck.checked) canvas.classList.add('show-grid'); // Apply grid class
+        
+        const rect = wrapper.getBoundingClientRect();
+        canvas.width = rect.width * state.scaleFactor;
+        canvas.height = rect.height * state.scaleFactor;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+
+        ctx = canvas.getContext('2d');
+        
+        // Canvas Centering Logic
+        if (viewState.scale === 1 && viewState.x === 0 && viewState.y === 0) {
+           centerCanvas();
+        }
+
+        wrapper.appendChild(canvas);
+        setMode(state.mode);
+        
+        canvas.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        
+        wrapper.addEventListener('wheel', handleWheel, { passive: false });
+        wrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
+        wrapper.addEventListener('touchmove', handleTouchMove, { passive: false });
+        wrapper.addEventListener('touchend', handleTouchEnd);
+        
+        canvas.addEventListener('mouseenter', () => {
+            if (state.mode === 'draw') {
+                helper.style.display = 'block';
+                brushPoint.style.display = 'block';
+                mouseTarget.style.display = 'block';
+            }
+        });
+
+        // Don't reset curves here if loaded
+        // But 'Create New'/Update Canvas logic implies reset?
+        // User workflow: "Update Canvas" sets size. Usually implies new drawing.
+        // But we just loaded state.
+        // Let's keep curves.
+        
+        window.onresize = () => {
+             const r = wrapper.getBoundingClientRect();
+             canvas.width = r.width * state.scaleFactor;
+             canvas.height = r.height * state.scaleFactor;
+             redraw();
+        };
+
+        redraw();
+        updateHelperSize();
+        updateViewTransform(); 
+        requestAnimationFrame(loop);
+    }
+        
+        // -- Pan & Zoom Logic --
+        function updateViewTransform() {
+            if(!canvas) return;
+            // No CSS Transform on canvas anymore for crispness
+            // canvas.style.transform = `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.scale})`;
+            
+            // We need to request redraw to apply ctx transform
+            redraw();
+            updateBrushVisuals(); // Update helpers size/pos
+            
+            if(viewState.scale !== 1 || viewState.x !== 0 || viewState.y !== 0) {
+                 resetViewBtn.style.display = 'flex';
+            }
+        }
+        
+        let touchStartDist = 0;
+        let touchStartScale = 1;
+        let touchStartCenter = { x: 0, y: 0 }; // Client Coords
+        let touchStartView = { x: 0, y: 0 };   // View State
+        let isTouching = false;
+        
+        function getTouchDist(t1, t2) {
+            const dx = t1.clientX - t2.clientX;
+            const dy = t1.clientY - t2.clientY;
+            return Math.sqrt(dx*dx + dy*dy);
+        }
+        
+        function getTouchCenter(t1, t2) {
+            return {
+                x: (t1.clientX + t2.clientX) / 2,
+                y: (t1.clientY + t2.clientY) / 2
+            };
+        }
+        
+        function handleTouchStart(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault(); 
+                isTouching = true;
+                touchStartDist = getTouchDist(e.touches[0], e.touches[1]);
+                touchStartScale = viewState.scale;
+                
+                touchStartCenter = getTouchCenter(e.touches[0], e.touches[1]);
+                touchStartView = { x: viewState.x, y: viewState.y };
+                
+            } 
+        }
+        
+        // Mouse Wheel Zoom
+        let isCtrlPanning = false;
+        let lastMouseView = { x: 0, y: 0 };
+        
+        function handleWheel(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            // Mouse relative to canvas (not transformed)
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const zoomSpeed = 0.001;
+            const delta = -e.deltaY;
+            const factor = Math.pow(1.1, delta / 100);
+
+            const oldScale = viewState.scale;
+            let newScale = oldScale * factor;
+            newScale = Math.max(0.2, Math.min(10, newScale));
+            
+            // Zoom towards mouse:
+            // The logic: The point under the mouse (logical) stays under the mouse (screen).
+            // logicalX = (mouseX - panX) / scale
+            // newPanX = mouseX - logicalX * newScale
+            //         = mouseX - ((mouseX - panX) / oldScale) * newScale
+            
+            const newX = mouseX - ((mouseX - viewState.x) / oldScale) * newScale;
+            const newY = mouseY - ((mouseY - viewState.y) / oldScale) * newScale;
+            
+            viewState.scale = newScale;
+            viewState.x = newX;
+            viewState.y = newY;
+            
+            updateViewTransform();
+            saveState(); // Save on Zoom
+        }
+
+        function handleTouchMove(e) {
+            if (e.touches.length === 2 && isTouching) {
+                e.preventDefault();
+                const dist = getTouchDist(e.touches[0], e.touches[1]);
+                const center = getTouchCenter(e.touches[0], e.touches[1]);
+                const rect = canvas.getBoundingClientRect();
+                
+                // Zoom
+                const newScale = touchStartScale * (dist / touchStartDist);
+                const clampedScale = Math.max(0.2, Math.min(10, newScale));
+                
+                // Pan + Zoom Composite
+                // We want the point at 'center' to correspond to the same point it did at start.
+                // Center relative to canvas
+                const cx = center.x - rect.left;
+                const cy = center.y - rect.top;
+                const startCx = touchStartCenter.x - rect.left;
+                const startCy = touchStartCenter.y - rect.top;
+                
+                // This is getting complex for simple touch logic replacement.
+                // Simplified: Just use the delta of the center for panning?
+                // Standard approach:
+                // 1. Calculate new scale
+                // 2. Adjust pan so that center of pinch stays fixed relative to content?
+                // Let's stick to the previous simple logic but adapted for manual transform (since rect is static now).
+                
+                // Actually, since CANVAS ELEMENT is not transforming, 'rect' is static (0,0).
+                
+                // Simple Pan:
+                 const dx = center.x - touchStartCenter.x;
+                 const dy = center.y - touchStartCenter.y;
+                 
+                 // Apply simple pan from start view
+                 viewState.x = touchStartView.x + dx;
+                 viewState.y = touchStartView.y + dy;
+                 
+                 // Apply Scale (centered on screen center? or pinch center?)
+                 // Let's just update scale.
+                 viewState.scale = clampedScale;
+                
+                updateViewTransform();
+                
+            } else if (e.touches.length === 1) {
+                if(e.target === canvas) {
+                     // e.preventDefault(); 
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            if (e.touches.length < 2) {
+                isTouching = false;
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedIndex !== -1) {
+                curves.splice(selectedIndex, 1);
+                selectedIndex = -1;
+                redraw();
+                updateUIState();
+            }
+        }
+
+        function clearAll() {
+            if (!ctx) return;
+            curves = [];
+            currentPoints = [];
+            selectedIndex = -1;
+            redraw();
+            updateUIState();
+        }
+
+        function updateUIState() {
+            deleteBtn.disabled = selectedIndex === -1;
+            updateOutputs();
+            updateDFT(); // Also update DFT on selection change
+        }
+
+        function getCanvasCoords(e) {
+            // Map Mouse Client Coords -> Logical Canvas Coords
+            // Logic: (Client - CanvasOffset - Pan) / Scale
+            const rect = canvas.getBoundingClientRect();
+            
+            // Client relative to DOM element
+            const domX = e.clientX - rect.left;
+            const domY = e.clientY - rect.top;
+            
+            // Apply Inverse Transform
+            const logicX = (domX - viewState.x) / viewState.scale;
+            const logicY = (domY - viewState.y) / viewState.scale;
+
+            return { x: logicX, y: logicY };
+        }
+
+        function handleMove(e) {
+            // Desktop Pan
+            if (isCtrlPanning) {
+                const dx = e.clientX - lastMouseView.x;
+                const dy = e.clientY - lastMouseView.y;
+                viewState.x += dx;
+                viewState.y += dy;
+                lastMouseView = { x: e.clientX, y: e.clientY };
+                updateViewTransform();
+                // hide cursor when panning
+                if(brushPoint) brushPoint.style.display = 'none';
+                if(helper) helper.style.display = 'none';
+                return;
+            }
+
+            if (!canvas) return;
+            
+            // Drag Selection
+            if (isDragging && selectedIndex !== -1 && state.mode === 'select') {
+                const pos = getCanvasCoords(e);
+                const dx = pos.x - dragLastPos.x;
+                const dy = pos.y - dragLastPos.y;
+                
+                // Update curve points
+                curves[selectedIndex].points.forEach(p => {
+                    p.x += dx;
+                    p.y += dy;
+                });
+                
+                dragLastPos = pos;
+                redraw();
+                updateUIState();
+                updateDFT(); 
+                updateOutputs();
+                saveState(); // Save on Drag
+                return;
+            }
+
+            // Standard Move
+            const pos = getCanvasCoords(e);
+            pointer.x = pos.x;
+            pointer.y = pos.y;
+            
+            // Update Mouse Target Helper
+            // We need Wrapper Relative coordinate for the DIV helper
+            const wrapRect = wrapper.getBoundingClientRect();
+            const visX = e.clientX - wrapRect.left;
+            const visY = e.clientY - wrapRect.top;
+            
+            mouseTarget.style.left = visX + 'px';
+            mouseTarget.style.top = visY + 'px';
+            
+            
+            if (!state.isDrawing && state.mode === 'draw') {
+                brush.x = pointer.x;
+                brush.y = pointer.y;
+                updateBrushVisuals();
+            }
+        }
+
+        function handleMouseDown(e) {
+            // Check for Ctrl + Click
+            if (e.ctrlKey) {
+                isCtrlPanning = true;
+                lastMouseView = { x: e.clientX, y: e.clientY };
+                e.preventDefault();
+                return;
+            }
+
+            if (e.button !== 0) return;
+            const pos = getCanvasCoords(e);
+
+            if (state.mode === 'select') {
+                const hitIdx = findHitCurve(pos.x, pos.y);
+                selectedIndex = hitIdx;
+                
+                if (hitIdx !== -1) {
+                    isDragging = true;
+                    dragLastPos = pos;
+                }
+                
+                redraw();
+                updateUIState();
+                return;
+            }
+            
+            // Draw Mode: Check if inside paper
+            if (pos.x >= 0 && pos.x <= state.width && pos.y >= 0 && pos.y <= state.height) {
+                state.isDrawing = true;
+                currentPoints = [];
+    
+                brush.x = pos.x;
+                brush.y = pos.y;
+                pointer.x = pos.x;
+                pointer.y = pos.y;
+    
+                addPoint(brush.x, brush.y);
+            }
+        }
+
+        function handleMouseUp() {
+            if (isCtrlPanning) {
+                isCtrlPanning = false;
+                return;
+            }
+            if (isDragging) {
+                isDragging = false;
+                return;
+            }
+
+            if (state.mode === 'select') return;
+            if (!state.isDrawing) return;
+            state.isDrawing = false;
+
+            if (currentPoints.length > 2) {
+                const start = currentPoints[0];
+                addPoint(start.x, start.y);
+
+                curves.push({
+                    points: [...currentPoints],
+                    brushSize: state.brushSize
+                });
+                selectedIndex = curves.length - 1;
+            }
+
+            currentPoints = [];
+            redraw();
+            updateUIState();
+            saveState(); // Save on Draw End
+        }
+
+        function loop() {
+            if (state.isDrawing && state.mode === 'draw') {
+                const dx = pointer.x - brush.x;
+                const dy = pointer.y - brush.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > state.radius) {
+                    const angle = Math.atan2(dy, dx);
+                    const targetX = pointer.x - Math.cos(angle) * state.radius;
+                    const targetY = pointer.y - Math.sin(angle) * state.radius;
+
+                    brush.x += (targetX - brush.x) * state.friction;
+                    brush.y += (targetY - brush.y) * state.friction;
+
+                    addPoint(brush.x, brush.y);
+                }
+                updateBrushVisuals();
+                redraw();
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function updateBrushVisuals() {
+            if (canvas && state.mode === 'draw' && selectedIndex === -1) {
+                // Calculate visual position
+                // Visual = Logical * Scale + Pan
+                
+                // We must add canvas offset (wrapper relative)
+                 // Or rather: MouseTarget is in wrapper. Wrapper has relative positioning.
+                 // Canvas is in wrapper.
+                 // Canvas OffsetLeft/top is 0 or centered? 
+                 // Canvas is Flex centered.
+                 
+                 const cx = canvas.offsetLeft + viewState.x + brush.x * viewState.scale;
+                 const cy = canvas.offsetTop + viewState.y + brush.y * viewState.scale;
+                 
+                 const r = state.radius * viewState.scale;
+                 
+                brushPoint.style.display = 'block';
+                helper.style.display = 'block';
+                
+                brushPoint.style.left = cx + 'px';
+                brushPoint.style.top = cy + 'px';
+                
+                helper.style.width = (r * 2) + 'px';
+                helper.style.height = (r * 2) + 'px';
+                helper.style.left = cx + 'px';
+                helper.style.top = cy + 'px';
+                
+            } else {
+                brushPoint.style.display = 'none';
+                helper.style.display = 'none';
+            }
+        }
+
+        function drawCurve(pts, isSelected, size) {
+            if (pts.length < 2) return;
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+
+            for (let i = 1; i < pts.length; i++) {
+                ctx.lineTo(pts[i].x, pts[i].y);
+            }
+
+            ctx.strokeStyle = isSelected ? '#1484e6' : 'black';
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function redraw() {
+            if (!ctx) return;
+            
+            // Clear entire viewport
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // clear physical
+             
+             // Transform
+             const F = state.scaleFactor;
+             const s = viewState.scale;
+             const x = viewState.x;
+             const y = viewState.y;
+             
+             // We apply transform for drawing the content
+             ctx.setTransform(s * F, 0, 0, s * F, x * F, y * F);
+             
+             // 1. Draw Paper
+             ctx.save();
+             ctx.shadowColor = 'rgba(0,0,0,0.1)';
+             ctx.shadowBlur = 20;
+             ctx.shadowOffsetY = 10;
+             ctx.fillStyle = 'white';
+             ctx.fillRect(0, 0, state.width, state.height);
+             ctx.restore();
+             
+             // Clip to Paper
+             ctx.save();
+             ctx.beginPath();
+             ctx.rect(0, 0, state.width, state.height);
+             ctx.clip();
+            
+            // Draw Grid Manually
+            if (gridCheck.checked) {
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = 1 / s; 
+                
+                const step = 50;
+                ctx.beginPath();
+                for(let gx=0; gx<=state.width; gx+=step) {
+                    ctx.moveTo(gx, 0);
+                    ctx.lineTo(gx, state.height);
+                }
+                for(let gy=0; gy<=state.height; gy+=step) {
+                    ctx.moveTo(0, gy);
+                    ctx.lineTo(state.width, gy);
+                }
+                ctx.stroke();
+            }
+
+            // Draw Axes if cartesian
+            if (state.cartesian) {
+                const cx = state.width / 2;
+                const cy = state.height / 2;
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1 / s;
+                
+                // X Axis
+                ctx.beginPath();
+                ctx.moveTo(0, cy);
+                ctx.lineTo(state.width, cy);
+                ctx.stroke();
+                
+                // Y Axis
+                ctx.beginPath();
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, state.height);
+                ctx.stroke();
+            }
+
+            curves.forEach((c, idx) => {
+                drawCurve(c.points, idx === selectedIndex, c.brushSize);
+            });
+
+            if (state.isDrawing && currentPoints.length > 0) {
+                drawCurve(currentPoints, true, state.brushSize);
+            }
+            
+            ctx.restore(); // End Clip
+        }
+
+        function updateBrushVisuals() {
+            if (canvas && state.mode === 'draw') {
+                 // Visual = Logical * Scale + Pan
+                 const s = viewState.scale;
+                 const tx = viewState.x;
+                 const ty = viewState.y;
+                 
+                 const visualX = brush.x * s + tx;
+                 const visualY = brush.y * s + ty;
+                 
+                 const r = state.radius * s;
+                 
+                 brushPoint.style.display = 'block';
+                 helper.style.display = 'block';
+                 
+                 // Wrapper Relative (Assuming canvas is at 0,0 inside innerHTML cleared wrapper)
+                 // Actually wrapper flex centers canvas usually?
+                 // But we set canvas size to wrapper size in initCanvas.
+                 // So canvas offset is 0. 
+                 
+                 brushPoint.style.left = visualX + 'px';
+                 brushPoint.style.top = visualY + 'px';
+                 
+                 helper.style.width = (r * 2) + 'px';
+                 helper.style.height = (r * 2) + 'px';
+                 helper.style.left = visualX + 'px';
+                 helper.style.top = visualY + 'px';
+            } else {
+                brushPoint.style.display = 'none';
+                helper.style.display = 'none';
+            }
+        }
+
+        function updateHelperSize() {
+            const d = state.radius * 2;
+            helper.style.width = d + 'px';
+            helper.style.height = d + 'px';
+        }
+
+        function addPoint(x, y) {
+            if (currentPoints.length > 0) {
+                const last = currentPoints[currentPoints.length - 1];
+                if (Math.abs(last.x - x) < 0.1 && Math.abs(last.y - y) < 0.1) return;
+            }
+            currentPoints.push({ x, y });
+        }
+        
+        function getCurvePoints(idx) {
+            if (idx !== -1 && curves[idx]) {
+                const raw = curves[idx].points;
+                // Convert to Cartesian if needed
+                if(state.cartesian) {
+                    const cx = state.width / 2;
+                    const cy = state.height / 2;
+                    return raw.map(p => ({
+                        x: p.x - cx,
+                        y: -(p.y - cy) // y up is positive
+                    }));
+                }
+                return raw;
+            }
+            return [];
+        }
+
+        function updateOutputs() {
+            const pts = getCurvePoints(selectedIndex);
+
+            if (pts.length === 0) {
+                document.getElementById('x-output').value = ``;
+                document.getElementById('y-output').value = ``;
+                return;
+            }
+
+            const dec = state.coordDecimals !== undefined ? state.coordDecimals : 2;
+            const xArr = pts.map(p => parseFloat(p.x.toFixed(dec)));
+            const yArr = pts.map(p => parseFloat(p.y.toFixed(dec)));
+
+            document.getElementById('x-output').value = `const drawingX = [${xArr.join(', ')}];`;
+            document.getElementById('y-output').value = `const drawingY = [${yArr.join(', ')}];`;
+        }
+        
+        function updateDFT() {
+             const pts = getCurvePoints(selectedIndex);
+             const nOut = document.getElementById('n-output');
+             const rOut = document.getElementById('r-output');
+             const phiOut = document.getElementById('phi-output');
+             
+             if (pts.length === 0) {
+                 nOut.value = ''; rOut.value = ''; phiOut.value = '';
+                 return;
+             }
+             
+             const M = pts.length;
+             
+             // Dynamic N limits
+             // maxN can be M, capped at 1000
+             const maxLimit = 1000;
+             const effectiveMax = Math.min(M, maxLimit);
+             
+             dftNSlider.max = effectiveMax;
+             dftNInput.max = effectiveMax;
+
+             // Clamp current value
+             if(state.dftN > effectiveMax) {
+                 state.dftN = effectiveMax;
+                 dftNSlider.value = state.dftN;
+                 dftNInput.value = state.dftN;
+             }
+             
+             const targetN = state.dftN; // Exact count user wants
+             
+             // Generate Indices: 0, 1, -1, 2, -2 ...
+             let indices = [];
+             
+             // Always include 0 if targetN >= 1
+             if (targetN >= 1) indices.push(0);
+             
+             let k = 1;
+             while(indices.length < targetN && k < M) {
+                 // Positive k
+                 if (indices.length < targetN) {
+                     indices.push(k);
+                 }
+                 
+                 // Negative k (M - k)
+                 if (indices.length < targetN) {
+                     const negK = M - k;
+                     // Avoid duplicate if M is even and k = M/2
+                     if (negK !== k) {
+                        indices.push(negK);
+                     }
+                 }
+                 k++;
+             }
+             
+             let resultN = [];
+             let resultR = [];
+             let resultPhi = [];
+             const dec = state.dftDecimals !== undefined ? state.dftDecimals : 2;
+             
+             indices.forEach(m => {
+                 let sumR = 0;
+                 let sumI = 0;
+                 
+                 for(let k=0; k<M; k++) {
+                     const p = pts[k]; // x + iy
+                     const theta = -2 * Math.PI * m * k / M;
+                     const c = Math.cos(theta);
+                     const s = Math.sin(theta);
+                     
+                     sumR += p.x * c - p.y * s;
+                     sumI += p.x * s + p.y * c;
+                 }
+                 
+                 sumR /= M;
+                 sumI /= M;
+                 
+                 const r = Math.sqrt(sumR*sumR + sumI*sumI);
+                 const phi = Math.atan2(sumI, sumR);
+                 
+                 let nVal = m;
+                 if (m >= M/2 && m > 0) nVal = m - M; // Convert M-k to -k for display
+                 
+                 resultN.push(nVal);
+                 resultR.push(parseFloat(r.toFixed(dec)));
+                 resultPhi.push(parseFloat(phi.toFixed(dec)));
+             });
+             
+             nOut.value = `const n = [${resultN.join(', ')}];`;
+             rOut.value = `const r = [${resultR.join(', ')}];`;
+             phiOut.value = `const phi = [${resultPhi.join(', ')}];`;
+        }
+
+        function findHitCurve(x, y) {
+            const HIT_DIST = 10;
+            for (let i = curves.length - 1; i >= 0; i--) {
+                const pts = curves[i].points;
+                for (let j = 0; j < pts.length - 1; j++) {
+                    const dist = distToSegment({ x, y }, pts[j], pts[j + 1]);
+                    if (dist < HIT_DIST) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+
+        function distToSegment(p, v, w) {
+            const l2 = distSq(v, w);
+            if (l2 === 0) return distSq(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt(distSq(p, {
+                x: v.x + t * (w.x - v.x),
+                y: v.y + t * (w.y - v.y)
+            }));
+        }
+
+        function distSq(v, w) {
+            return (v.x - w.x) * (v.x - w.x) + (v.y - w.y) * (v.y - w.y);
+        }
+
+        updateHelperSize();
+    </script>
+</body>
+</html>/html>
