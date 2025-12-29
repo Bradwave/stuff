@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simboli Matematici - Stuff</title>
+    <!-- Import Space Mono for UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Import Noto Sans Math for symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Math&display=swap" rel="stylesheet">
+    <!-- Import Material Symbols Outlined -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <!-- Custom Favicon: Sigma inside Copy Symbol (Outline) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231484e6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' opacity='0.5'/%3E%3Crect x='8' y='8' width='12' height='12' rx='2' ry='2'/%3E%3Cpath d='M17 11H11l3 3l-3 3h6' stroke-width='1.8'/%3E%3C/svg%3E">
+
+    <style>
+        :root {
+            /* Motus Palette */
+            --color-bg: #ffffff;
+            --color-bg-card: #ffffff;
+            --color-bg-track: #f3f6f9;
+            
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #555555;
+            
+            --color-accent: #1484e6;
+            --color-accent-soft: #e3f2fd;
+            
+            --color-border: #e0e0e0;
+            --shadow-soft: 0 2px 8px rgba(0,0,0,0.04);
+            
+            --font-ui: 'Space Mono', monospace;
+            --font-math: 'Noto Sans Math', 'Cambria Math', 'Segoe UI Symbol', sans-serif;
+            
+            --radius-sm: 6px;
+        }
+
+        ::selection {
+            background-color: var(--color-accent);
+            color: var(--color-bg);
+        }
+        
+        /* Modern Scrollbar & Stability */
+        html {
+            scrollbar-gutter: stable;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 5px;
+            border: 2px solid var(--color-bg); /* Padding effect */
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b0b0b0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        /* Subtle background pattern */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(var(--color-bg-track) 1px, transparent 1px),
+                linear-gradient(90deg, var(--color-bg-track) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        /* Top Navigation Bar */
+        .top-bar {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        
+        .back-link:hover { color: var(--color-accent); }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn-text {
+            border: none;
+            background: none;
+            color: var(--color-text-muted);
+            font-family: var(--font-ui);
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .btn-text:hover { color: var(--color-accent); }
+
+        /* Search Bar */
+        .search-container {
+            width: 100%;
+            max-width: 1000px;
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-family: var(--font-ui);
+            font-size: 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            box-shadow: var(--shadow-soft);
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 4px 12px rgba(20, 132, 230, 0.15);
+        }
+
+        /* Content Layout */
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .category-wrapper {
+            margin-top: 2rem;
+        }
+        
+        .category-wrapper:first-child {
+            margin-top: 0;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-text-muted);
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--color-bg-track);
+            padding-bottom: 0.25rem;
+        }
+
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+            gap: 0.35rem; /* Very compact */
+        }
+
+        .symbol-card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .symbol-card:hover {
+            border-color: var(--color-accent);
+            background-color: var(--color-accent-soft);
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .symbol-card:active {
+            transform: scale(0.95);
+        }
+
+        .symbol {
+            font-family: var(--font-math);
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+        
+        /* Specific tweaks for tiny sub/superscripts to be readable */
+        .symbol.small { font-size: 1.1rem; }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-text-muted);
+            font-style: italic;
+            display: none;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: var(--color-text-main);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        @media (max-width: 600px) {
+            .symbol-grid { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
+            .symbol { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="../index.html" class="back-link">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Stuff Index
+        </a>
+        <div class="actions">
+            <h1>Simboli</h1>
+            <button class="btn-text" id="clearDataBtn" title="Cancella cronologia">Reset Dati</button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Cerca simbolo (es. 'alpha', 'pi', 'integral')...">
+    </div>
+
+    <div class="container" id="mainContainer">
+        
+        <!-- Usage Based Sections (Always Visible) -->
+        <div id="usageSection" style="display: none;">
+            <div class="category-wrapper">
+                <h2 class="section-title">Utilizzati di recente</h2>
+                <div class="symbol-grid" id="recentGrid"></div>
+            </div>
+            <div class="category-wrapper">
+                <h2 class="section-title">Più utilizzati</h2>
+                <div class="symbol-grid" id="frequentGrid"></div>
+            </div>
+            <hr style="margin-top: 2rem; border: none; border-bottom: 2px dashed #bbbbbb;">
+        </div>
+
+        <!-- Rendered by JS -->
+        <div id="categoriesContainer"></div>
+        
+        <div id="noResults" class="empty-state">
+            Nessun simbolo trovato.
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span id="toastMsg">Copiato!</span>
+    </div>
+
+    <script>
+        // --- Data Definitions ---
+        const LIBRARY = [
+            {
+                category: "Esponenti & Indici",
+                items: [
+                    // Superscripts
+                    { val: "⁰", name: "super 0 zero", tags: ["power", "exponent"] },
+                    { val: "¹", name: "super 1 one", tags: ["power", "exponent"] },
+                    { val: "²", name: "super 2 two", tags: ["power", "exponent", "squared"] },
+                    { val: "³", name: "super 3 three", tags: ["power", "exponent", "cubed"] },
+                    { val: "⁴", name: "super 4 four", tags: ["power", "exponent"] },
+                    { val: "⁵", name: "super 5 five", tags: ["power", "exponent"] },
+                    { val: "⁶", name: "super 6 six", tags: ["power", "exponent"] },
+                    { val: "⁷", name: "super 7 seven", tags: ["power", "exponent"] },
+                    { val: "⁸", name: "super 8 eight", tags: ["power", "exponent"] },
+                    { val: "⁹", name: "super 9 nine", tags: ["power", "exponent"] },
+                    { val: "⁺", name: "super plus", tags: ["positive", "charge"] },
+                    { val: "⁻", name: "super minus", tags: ["negative", "charge"] },
+                    { val: "⁼", name: "super equal", tags: [] },
+                    { val: "⁽", name: "super open paren", tags: [] },
+                    { val: "⁾", name: "super close paren", tags: [] },
+                    { val: "ⁿ", name: "super n", tags: ["power"] },
+                    { val: "ⁱ", name: "super i", tags: ["power"] },
+                    // Subscripts
+                    { val: "₀", name: "sub 0 zero", tags: ["index", "base"] },
+                    { val: "₁", name: "sub 1 one", tags: ["index", "base"] },
+                    { val: "₂", name: "sub 2 two", tags: ["index", "base"] },
+                    { val: "₃", name: "sub 3 three", tags: ["index", "base"] },
+                    { val: "₄", name: "sub 4 four", tags: ["index", "base"] },
+                    { val: "₅", name: "sub 5 five", tags: ["index", "base"] },
+                    { val: "₆", name: "sub 6 six", tags: ["index", "base"] },
+                    { val: "₇", name: "sub 7 seven", tags: ["index", "base"] },
+                    { val: "₈", name: "sub 8 eight", tags: ["index", "base"] },
+                    { val: "₉", name: "sub 9 nine", tags: ["index", "base"] },
+                    { val: "₊", name: "sub plus", tags: ["plus"] },
+                    { val: "₋", name: "sub minus", tags: ["minus"] },
+                    { val: "₌", name: "sub equal", tags: [] },
+                    { val: "₍", name: "sub open paren", tags: [] },
+                    { val: "₎", name: "sub close paren", tags: [] },
+                    { val: "ₐ", name: "sub a", tags: [] },
+                    { val: "ₑ", name: "sub e", tags: [] },
+                    { val: "ₕ", name: "sub h", tags: [] },
+                    { val: "ᵢ", name: "sub i", tags: ["index"] },
+                    { val: "ⱼ", name: "sub j", tags: ["index"] },
+                    { val: "ₖ", name: "sub k", tags: ["index"] },
+                    { val: "ₗ", name: "sub l", tags: [] },
+                    { val: "ₘ", name: "sub m", tags: [] },
+                    { val: "ₙ", name: "sub n", tags: ["index"] },
+                    { val: "ₒ", name: "sub o", tags: [] },
+                    { val: "ₚ", name: "sub p", tags: [] },
+                    { val: "ᵣ", name: "sub r", tags: [] },
+                    { val: "ₛ", name: "sub s", tags: [] },
+                    { val: "ₜ", name: "sub t", tags: [] },
+                    { val: "ᵤ", name: "sub u", tags: [] },
+                    { val: "ᵥ", name: "sub v", tags: [] },
+                    { val: "ₓ", name: "sub x", tags: [] },
+                ]
+            },
+            {
+                category: "Operatori di Base",
+                items: [
+                    { val: "+", name: "plus", tags: ["add"] },
+                    { val: "-", name: "minus", tags: ["subtract"] },
+                    { val: "×", name: "multiply times", tags: ["cross", "product"] },
+                    { val: "·", name: "dot multiply", tags: ["product"] },
+                    { val: "÷", name: "divide", tags: [] },
+                    { val: "±", name: "plus minus", tags: ["tolerance"] },
+                    { val: "∓", name: "minus plus", tags: [] },
+                    { val: "√", name: "square root", tags: ["radical"] },
+                    { val: "∛", name: "cube root", tags: [] },
+                    { val: "∜", name: "fourth root", tags: [] },
+                    { val: "∞", name: "infinity", tags: [] },
+                    { val: "!", name: "factorial", tags: [] },
+                    { val: "%", name: "percent", tags: [] },
+                    { val: "‰", name: "per mille", tags: [] },
+                    { val: "⁄", name: "fraction slash", tags: [] },
+                ]
+            },
+            {
+                category: "Relazioni",
+                items: [
+                    { val: "=", name: "equal", tags: [] },
+                    { val: "≠", name: "not equal", tags: [] },
+                    { val: "≈", name: "approximate", tags: [] },
+                    { val: "≃", name: "asymptotically equal", tags: [] },
+                    { val: "≅", name: "congruent", tags: [] },
+                    { val: "≡", name: "identical", tags: ["defined"] },
+                    { val: "≢", name: "not identical", tags: [] },
+                    { val: "<", name: "less than", tags: [] },
+                    { val: ">", name: "greater than", tags: [] },
+                    { val: "≤", name: "less equal", tags: [] },
+                    { val: "≥", name: "greater equal", tags: [] },
+                    { val: "≪", name: "much less", tags: [] },
+                    { val: "≫", name: "much greater", tags: [] },
+                    { val: "∝", name: "proportional", tags: [] },
+                    { val: "∼", name: "similar", tags: ["tilde"] },
+                ]
+            },
+            {
+                category: "Frecce",
+                items: [
+                    { val: "→", name: "right arrow", tags: ["to", "limit"] },
+                    { val: "←", name: "left arrow", tags: [] },
+                    { val: "↔", name: "left right arrow", tags: [] },
+                    { val: "↑", name: "up arrow", tags: [] },
+                    { val: "↓", name: "down arrow", tags: [] },
+                    { val: "↕", name: "up down arrow", tags: [] },
+                    { val: "⇒", name: "implies", tags: ["double arrow"] },
+                    { val: "⇐", name: "implied by", tags: [] },
+                    { val: "⇔", name: "iff equivalent", tags: ["double arrow"] },
+                    { val: "↦", name: "maps to", tags: ["function"] },
+                    { val: "↗", name: "north east arrow", tags: [] },
+                    { val: "↘", name: "south east arrow", tags: [] },
+                ]
+            },
+            {
+                category: "Insiemi & Logica",
+                items: [
+                    { val: "∀", name: "for all", tags: ["universal"] },
+                    { val: "∃", name: "exists", tags: ["existential"] },
+                    { val: "∄", name: "not exists", tags: [] },
+                    { val: "∈", name: "element of", tags: ["in"] },
+                    { val: "∉", name: "not element of", tags: [] },
+                    { val: "∋", name: "contains", tags: [] },
+                    { val: "⊂", name: "subset strict", tags: [] },
+                    { val: "⊆", name: "subset", tags: [] },
+                    { val: "⊄", name: "not subset", tags: [] },
+                    { val: "∪", name: "union", tags: [] },
+                    { val: "∩", name: "intersection", tags: [] },
+                    { val: "∅", name: "empty set", tags: ["null"] },
+                    { val: "∖", name: "set minus", tags: [] },
+                    { val: "∧", name: "and logical", tags: ["wedge"] },
+                    { val: "∨", name: "or logical", tags: ["vee"] },
+                    { val: "¬", name: "not logical", tags: ["negation"] },
+                    { val: "∴", name: "therefore", tags: [] },
+                    { val: "∵", name: "because", tags: [] },
+                    { val: "∎", name: "end proof QED", tags: [] },
+                ]
+            },
+            {
+                category: "Parentesi & Delimitatori",
+                items: [
+                    { val: "⟨", name: "angle bracket left", tags: ["bra"] },
+                    { val: "⟩", name: "angle bracket right", tags: ["ket"] },
+                    { val: "⌊", name: "floor left", tags: [] },
+                    { val: "⌋", name: "floor right", tags: [] },
+                    { val: "⌈", name: "ceil left", tags: [] },
+                    { val: "⌉", name: "ceil right", tags: [] },
+                    { val: "|", name: "pipe vertical bar", tags: ["absolute"] },
+                    { val: "‖", name: "double vertical bar", tags: ["norm"] },
+                    { val: "{", name: "curly brace left", tags: [] },
+                    { val: "}", name: "curly brace right", tags: [] },
+                ]
+            },
+            {
+                category: "Calcolo & Geometria",
+                items: [
+                    { val: "∫", name: "integral", tags: [] },
+                    { val: "∬", name: "double integral", tags: [] },
+                    { val: "∭", name: "triple integral", tags: [] },
+                    { val: "∮", name: "contour integral", tags: [] },
+                    { val: "∂", name: "partial derivative", tags: ["delta"] },
+                    { val: "∇", name: "nabla", tags: ["del", "gradient"] },
+                    { val: "∑", name: "summation sigma", tags: ["sum"] },
+                    { val: "∏", name: "product pi", tags: [] },
+                    { val: "∆", name: "delta", tags: ["difference"] },
+                    { val: "′", name: "prime", tags: ["derivative"] },
+                    { val: "″", name: "double prime", tags: [] },
+                    { val: "∠", name: "angle", tags: [] },
+                    { val: "⊥", name: "perpendicular", tags: ["orthogonal"] },
+                    { val: "∥", name: "parallel", tags: [] },
+                    { val: "°", name: "degree", tags: [] },
+                    { val: "π", name: "pi", tags: [] },
+                ]
+            },
+            {
+                category: "Greco Minuscolo",
+                items: [
+                    // Lowercase
+                    { val: "α", name: "alpha", tags: [] },
+                    { val: "β", name: "beta", tags: [] },
+                    { val: "γ", name: "gamma", tags: [] },
+                    { val: "δ", name: "delta", tags: [] },
+                    { val: "ε", name: "epsilon", tags: [] },
+                    { val: "ζ", name: "zeta", tags: [] },
+                    { val: "η", name: "eta", tags: [] },
+                    { val: "θ", name: "theta", tags: [] },
+                    { val: "ι", name: "iota", tags: [] },
+                    { val: "κ", name: "kappa", tags: [] },
+                    { val: "λ", name: "lambda", tags: [] },
+                    { val: "μ", name: "mu", tags: ["micro"] },
+                    { val: "ν", name: "nu", tags: [] },
+                    { val: "ξ", name: "xi", tags: [] },
+                    { val: "ο", name: "omicron", tags: [] },
+                    { val: "π", name: "pi", tags: [] },
+                    { val: "ρ", name: "rho", tags: [] },
+                    { val: "ς", name: "sigma final", tags: [] },
+                    { val: "σ", name: "sigma", tags: [] },
+                    { val: "τ", name: "tau", tags: [] },
+                    { val: "υ", name: "upsilon", tags: [] },
+                    { val: "φ", name: "phi", tags: [] },
+                    { val: "χ", name: "chi", tags: [] },
+                    { val: "ψ", name: "psi", tags: [] },
+                    { val: "ω", name: "omega", tags: [] },
+                    { val: "ϕ", name: "phi variant", tags: [] },
+                    { val: "ϑ", name: "theta variant", tags: [] },
+                ]
+            },
+            {
+                category: "Greco Maiuscolo",
+                items: [
+                   { val: "Γ", name: "Gamma", tags: [] },
+                   { val: "Δ", name: "Delta", tags: [] },
+                   { val: "Θ", name: "Theta", tags: [] },
+                   { val: "Λ", name: "Lambda", tags: [] },
+                   { val: "Ξ", name: "Xi", tags: [] },
+                   { val: "Π", name: "Pi", tags: [] },
+                   { val: "Σ", name: "Sigma", tags: [] },
+                   { val: "Φ", name: "Phi", tags: [] },
+                   { val: "Ψ", name: "Psi", tags: [] },
+                   { val: "Ω", name: "Omega", tags: [] },
+                ]
+            },
+            {
+                category: "Vari",
+                items: [
+                    { val: "ℏ", name: "h bar", tags: ["planck"] },
+                    { val: "†", name: "dagger", tags: ["hermitian"] },
+                    { val: "‡", name: "double dagger", tags: [] },
+                    { val: "…", name: "ellipsis", tags: [] },
+                    { val: "•", name: "bullet", tags: [] },
+                    { val: "★", name: "star", tags: [] },
+                    { val: "©", name: "copyright", tags: [] },
+                    { val: "®", name: "registered", tags: [] },
+                    { val: "™", name: "trademark", tags: [] },
+                    { val: "ℵ", name: "aleph", tags: [] },
+                    { val: "ℜ", name: "real part", tags: [] },
+                    { val: "ℑ", name: "imaginary part", tags: [] },
+                    { val: "ℓ", name: "script l", tags: [] },
+                    { val: "℘", name: "weierstrauss p", tags: [] },
+                ]
+            }
+        ];
+
+        // --- App Logic ---
+        const LS_KEY = 'stuff_math_symbols_v1';
+        let userStats = {
+            recent: [], // array of chars, max 14
+            counts: {}  // char -> int
+        };
+
+        // --- Init ---
+        function init() {
+            loadStats();
+            renderCategories(LIBRARY); // Initial render of everything
+            renderStats();
+            
+            // Search listener
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                handleSearch(query);
+            });
+
+            // Clear listener
+            document.getElementById('clearDataBtn').addEventListener('click', () => {
+                if(confirm("Cancellare la cronologia e i simboli più usati?")) {
+                    clearData();
+                }
+            });
+        }
+
+        function loadStats() {
+            const stored = localStorage.getItem(LS_KEY);
+            if (stored) {
+                try {
+                    userStats = JSON.parse(stored);
+                } catch(e) { console.error("Bad storage", e); }
+            }
+        }
+
+        function saveStats() {
+            localStorage.setItem(LS_KEY, JSON.stringify(userStats));
+            renderStats();
+        }
+
+        function clearData() {
+            userStats = { recent: [], counts: {} };
+            saveStats();
+            showToast("Dati cancellati");
+        }
+
+        function trackUsage(symbol) {
+            // Update Recent
+            // Remove if exists to bubble to top
+            userStats.recent = userStats.recent.filter(s => s !== symbol);
+            userStats.recent.unshift(symbol);
+            if (userStats.recent.length > 14) userStats.recent.pop();
+
+            // Update Counts
+            userStats.counts[symbol] = (userStats.counts[symbol] || 0) + 1;
+
+            saveStats();
+        }
+
+        function getSymbolObject(char) {
+            for (const cat of LIBRARY) {
+                const found = cat.items.find(i => i.val === char);
+                if (found) return found;
+            }
+            return { val: char, name: 'Unknown', tags: [] };
+        }
+
+        // --- Rendering ---
+        
+        function createSymbolCard(item) {
+            const div = document.createElement('div');
+            div.className = 'symbol-card';
+            div.setAttribute('title', item.name); // Simple tooltip
+            div.innerHTML = `<span class="symbol ${item.tags.includes('index') || item.tags.includes('exponent') ? 'small' : ''}">${item.val}</span>`;
+            
+            div.onclick = () => {
+                navigator.clipboard.writeText(item.val);
+                showToast(`Copiato: ${item.val}`);
+                trackUsage(item.val);
+            };
+            return div;
+        }
+
+        function renderStats() {
+            const usageSection = document.getElementById('usageSection');
+            const recentGrid = document.getElementById('recentGrid');
+            const frequentGrid = document.getElementById('frequentGrid');
+
+            recentGrid.innerHTML = '';
+            frequentGrid.innerHTML = '';
+
+            if (userStats.recent.length === 0) {
+                usageSection.style.display = 'none';
+                return;
+            }
+
+            usageSection.style.display = 'block';
+
+            // Render Recent
+            userStats.recent.forEach(char => {
+                const item = getSymbolObject(char);
+                recentGrid.appendChild(createSymbolCard(item));
+            });
+
+            // Render Frequent (Top 14)
+            const sorted = Object.entries(userStats.counts)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 14)
+                .map(([char]) => char);
+
+            sorted.forEach(char => {
+                const item = getSymbolObject(char);
+                frequentGrid.appendChild(createSymbolCard(item));
+            });
+        }
+
+        function renderCategories(data) {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+            const noResults = document.getElementById('noResults');
+            
+            let hasAny = false;
+
+            data.forEach(cat => {
+                if (cat.items.length === 0) return;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'category-wrapper'; // New wrapper class for spacing
+                
+                const title = document.createElement('h2');
+                title.className = 'section-title';
+                title.textContent = cat.category;
+                
+                const grid = document.createElement('div');
+                grid.className = 'symbol-grid';
+
+                cat.items.forEach(item => {
+                    grid.appendChild(createSymbolCard(item));
+                });
+
+                wrapper.appendChild(title);
+                wrapper.appendChild(grid);
+                container.appendChild(wrapper);
+                hasAny = true;
+            });
+
+            noResults.style.display = hasAny ? 'none' : 'block';
+        }
+
+        function handleSearch(query) {
+            const usageSection = document.getElementById('usageSection');
+            
+            // Usage stats always visible if they exist!
+            if (userStats.recent.length > 0) {
+                 usageSection.style.display = 'block';
+            }
+
+            // If empty, show full library
+            if (!query) {
+                renderCategories(LIBRARY);
+                return;
+            }
+
+            // Filter library
+            const filtered = LIBRARY.map(cat => {
+                return {
+                    category: cat.category,
+                    items: cat.items.filter(item => {
+                        const matchVal = item.val.toLowerCase().includes(query);
+                        const matchName = item.name.toLowerCase().includes(query);
+                        const matchTags = item.tags.some(t => t.toLowerCase().includes(query));
+                        return matchVal || matchName || matchTags;
+                    })
+                };
+            }).filter(cat => cat.items.length > 0);
+
+            renderCategories(filtered);
+        }
+
+        // Output toast
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+        let toastTimeout;
+
+        function showToast(msg) {
+            toastMsg.textContent = msg;
+            toast.classList.add('show');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1000);
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
