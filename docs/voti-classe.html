@@ -38,18 +38,26 @@
         }
 
         /* --- Table Container --- */
-        table {
+        .table-wrapper {
             width: 100%;
-            table-layout: fixed;
-            border-collapse: separate;
-            border-spacing: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             margin-top: 20px;
             background: #ffffffcc;
             backdrop-filter: blur(8px);
             border-radius: 14px;
-            overflow: hidden;
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
             transition: 0.2s ease;
+        }
+
+        table {
+            width: 100%;
+            /* min-width to ensure scroll on mobile */
+            min-width: 800px;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: transparent;
         }
 
         th,
@@ -111,8 +119,12 @@
         .num-col {
             color: #4a90e2;
             opacity: 0.8;
+            color: #4a90e2;
+            opacity: 0.8;
             font-size: 0.85em;
         }
+        
+        .grade.missing { color: #ccc; font-style:italic; background: #f7f7f7; }
 
         .grade {
             display: inline-flex;
@@ -127,18 +139,24 @@
             box-sizing: border-box;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
-        .grade.missing {
-            background: #f3f3f3 !important;
-            color: #7a7a7a !important;
-            font-size: 11px;
-            width: 28px;
-        }
+        .grade.missing { color: #ccc; font-style:italic; background: #f7f7f7 !important; }
+        .grade-arrow { font-weight:bold; }
         /* small wrapper and arrow indicator next to each grade */
         .grade-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px; /* reduced gap */
+            justify-content: center;
         }
+        .grade-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .grade-dot.green { background-color: #1ec01e; }
+        .grade-dot.red { background-color: #d21919; }
+        .grade-dot.neutral { background-color: #ccc; }
         .grade-arrow {
             display: inline-block;
             width: 12px;
@@ -206,6 +224,11 @@
             transition: opacity 220ms ease, transform 220ms ease;
             position: relative;
             text-align: center;
+            /* Fix for infinite height / overflow */
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         #radar-title {
@@ -245,9 +268,16 @@
             }
         }
 
-        #chart {
+        .chart-container {
             width: 100%;
             height: 520px;
+            position: relative;
+            flex-shrink: 0; /* prevent squashing */
+        }
+        /* Ensure canvas inside fills container */
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
         /* Radar stats panel inside modal */
         #radar-stats {
@@ -327,14 +357,68 @@
                 <div class="radar-stat"><span class="label">Deficit medio</span><span class="value" id="stat-ratio">-</span></div>
                 <div class="radar-stat"><span class="label">Score</span><span class="value" id="stat-score">-</span></div>
             </div>
-            <div id="histogram-controls" aria-hidden="true">
+            <div class="chart-container">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histogram Modal (Separated) -->
+    <div id="histogram-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,28,40,0.22);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:20px;">
+        <div id="histogram-popup" style="background:#fff;border-radius:20px;padding:28px 32px 20px;width:min(92vw,760px);box-shadow:0 14px 48px rgba(0,0,0,0.16);animation:modalIn 240ms cubic-bezier(.15,.85,.25,1);position:relative;text-align:center;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
+            <button id="histogram-close" title="Chiudi" style="position:absolute;right:16px;top:12px;background:none;border:none;font-size:2rem;color:#4a90e2;cursor:pointer;transition:0.2s;">&times;</button>
+            <h2 id="histogram-title" style="margin:0 0 14px 0;font-size:1.35rem;font-weight:600;color:#1f3b5c;"></h2>
+            
+            <div id="histogram-controls" style="display:flex;justify-content:center;gap:12px;margin-top:16px;margin-bottom:8px;align-items:center;">
                 <label for="hist-bin-width">Granularità asse X:</label>
                 <input id="hist-bin-width" type="range" min="0.25" max="2" step="0.25" value="1">
-                <span id="hist-bin-label">1</span>
+                <span id="hist-bin-label" style="font-weight:700;color:#2b3b4a;margin-left:6px;">1</span>
             </div>
             <div id="hist-stats" style="display:none;justify-content:center;gap:12px;margin-bottom:10px;font-size:0.95rem;color:#2b3b4a"></div>
-            <canvas id="chart"></canvas>
-            <div style="height:10px"></div>
+            
+            <div class="chart-container" style="height:320px;">
+                <canvas id="histogram-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Dataset Management Modal -->
+    <div id="dataset-modal" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(20,28,40,0.22); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div id="dataset-popup" style="background:#fff; border-radius:16px; padding:24px; width:min(92vw, 600px); box-shadow:0 14px 48px rgba(0,0,0,0.16); animation:modalIn 240ms cubic-bezier(.15,.85,.25,1); position:relative; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
+            <button id="dataset-close" title="Chiudi" style="position:absolute; right:16px; top:16px; background:none; border:none; font-size:1.8rem; color:#4a90e2; cursor:pointer;">&times;</button>
+            <h3 style="margin:0 0 16px 0; color:#1f3b5c; font-size:1.3rem;">Gestione Dataset</h3>
+            <div id="dataset-list" style="max-height:60vh; overflow-y:auto; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;">
+                <!-- List items will be injected here -->
+            </div>
+            <div style="border-top:1px solid #eee; padding-top:16px; display:flex; justify-content:space-between; align-items:center;">
+                <button id="modal-clear-all-btn" style="background:none; border:1px solid #fee; color:#d21919; padding:6px 12px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
+                    Elimina tutto
+                </button>
+                <button id="modal-add-csv-btn" class="btn-report" style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:18px; line-height:1;">+</span> Aggiungi CSV
+                </button>
+            </div>
+            <div style="border-top:1px solid #eee; padding-top:16px; margin-top:16px; display:flex; justify-content:flex-start;">
+                 <button id="modal-clear-storage-btn" style="background:#fee; border:1px solid #fcc; color:#c00; padding:8px 12px; border-radius:8px; font-size:0.85rem; cursor:pointer; font-weight:600;">
+                    Elimina Tutto e Pulisci Storage
+                 </button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Radar Modal -->
+    <div id="combined-radar-modal" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(20,28,40,0.22); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div id="combined-radar-popup" style="background:#fff; border-radius:20px; padding:24px; width:min(95vw, 1000px); height:min(90vh, 800px); box-shadow:0 14px 48px rgba(0,0,0,0.16); animation:modalIn 240ms cubic-bezier(.15,.85,.25,1); position:relative; display:flex; flex-direction:column;">
+            <button id="combined-radar-close" title="Chiudi" style="position:absolute; right:16px; top:16px; background:none; border:none; font-size:1.8rem; color:#4a90e2; cursor:pointer; z-index:10;">&times;</button>
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+                <h3 style="margin:0; color:#1f3b5c; font-size:1.3rem;">Radar Classe</h3>
+                <select id="combined-radar-select" style="padding:6px; border-radius:6px; border:1px solid #ccc; font-family:'Inter',sans-serif; font-size:0.95rem; max-width:300px;">
+                    <option value="">Vista d'insieme (Tutti)</option>
+                </select>
+            </div>
+            <div style="flex:1; position:relative; min-height:0;">
+                <canvas id="combined-radar-chart"></canvas>
+            </div>
         </div>
     </div>
     <!-- Report modal -->
@@ -354,9 +438,16 @@
             <h1 style="margin:0">Voti della Classe</h1>
             <div style="display:flex;gap:12px;align-items:center">
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                    <label for="csv-file-input" class="btn-report" style="margin:0;cursor:pointer;display:inline-block">Carica CSV</label>
-                    <input type="file" id="csv-file-input" accept=".csv" style="display:none" title="Carica un file CSV">
-                    <span id="file-name" style="font-size:0.85rem;color:#556"></span>
+                    <div style="display:flex; gap:8px;">
+                         <button id="open-combined-radar" class="btn-report" style="background:#fff; color:#2b7fd9; border:1px solid #2b7fd9;">Radar Classe</button>
+                         <button id="open-dataset-mgr" class="btn-report" style="margin:0;">Gestione Dati</button>
+                    </div>
+                    <!-- Hidden file input triggered by modal -->
+                    <input type="file" id="csv-file-input" accept=".csv" multiple style="display:none" title="Carica uno o più file CSV">
+                    <div id="dataset-selector-container" style="display:none; align-items:center; gap:8px;">
+                        <span style="font-size:0.85rem; color:#556;">Vista:</span>
+                        <select id="dataset-selector" style="padding:4px 8px; border-radius:6px; border:1px solid #ccc; font-family:inherit; font-size:0.85rem; max-width: 200px;"></select>
+                    </div>
                 </div>
                 <button id="generate-report" class="btn-report" title="Genera un breve report automatico">Genera report</button>
             </div>
@@ -394,47 +485,142 @@
         }
 
         // Color for grade: green (≥6), red (<6), shade by value
+        
         function gradeColor(v) {
-            if (isNaN(v)) return '#444';
-            if (v >= 6) {
-                // Green: from #e6fbe6 (6) to #1ec01e (10)
-                const p = (v - 6) / 4;
-                const r = Math.round(230 - 214 * p), g = Math.round(251 - 51 * p), b = Math.round(230 - 198 * p);
-                return `rgb(${r},${g},${b})`;
-            } else {
-                // Red: from #fbe6e6 (6) to #c01e1e (0)
-                const p = v / 6;
-                const r = Math.round(251 - 59 * p), g = Math.round(230 - 214 * p), b = Math.round(230 - 214 * p);
-                return `rgb(${r},${g},${b})`;
+            if (isNaN(v)) return 'transparent'; // Should not happen for dots (we filter) but safe
+             return v >= 6 ? '#1ec01e' : '#d21919';
+        }
+
+        // Global State
+        let GLOBAL_datasets = []; // Array of { id, name, dateStr, dateObj, students, subjects, classAvg, overallAvg }
+        let GLOBAL_activeDatasetId = null;
+
+        // Helper to get active dataset
+        function getActiveDataset() {
+            return GLOBAL_datasets.find(d => d.id === GLOBAL_activeDatasetId);
+        }
+
+        // Helper to get previous dataset (chronologically before active)
+        function getPreviousDataset() {
+            if (!GLOBAL_activeDatasetId || GLOBAL_datasets.length < 2) return null;
+            const active = getActiveDataset();
+            if (!active) return null;
+            // Sort by date descending
+            const sorted = GLOBAL_datasets.slice().sort((a, b) => b.dateObj - a.dateObj);
+            const idx = sorted.findIndex(d => d.id === active.id);
+            // Previous is the one after active in descending list (older)
+            return (idx !== -1 && idx < sorted.length - 1) ? sorted[idx + 1] : null;
+        }
+
+        // Load initial data
+        // Check localStorage first
+        const STORAGE_KEY = 'voti_classe_data';
+        
+        function saveState() {
+            const state = {
+                datasets: GLOBAL_datasets.map(ds => ({
+                    id: ds.id,
+                    name: ds.name,
+                    dateStr: ds.dateObj.toISOString(), // save as ISO string 
+                    // We save raw student data structure to reconstruct easily? 
+                    // Or better, save the original CSVs?
+                    // Actually, for simplicity let's save the processed structure or just the raw parsed data.
+                    // But we don't have the original raw CSV stored in the object. Refactor addDataset might be needed or we reconstruct.
+                    // Let's store the 'students' array which contains grades. Subjects are needed too.
+                    subjects: ds.subjects,
+                    students: ds.students
+                })),
+                activeId: GLOBAL_activeDatasetId
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadState() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if(!raw) return false;
+            try {
+                const state = JSON.parse(raw);
+                if(!state.datasets || !Array.isArray(state.datasets)) return false;
+                
+                GLOBAL_datasets = state.datasets.map(d => {
+                    // Reconstruct derived stats
+                    const subjects = d.subjects;
+                    const students = d.students;
+                    
+                    // Re-calculate averages as they are not saved or need function references
+                     const classAvg = subjects.map((_, i) => {
+                        const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+                    });
+                    const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+                    const overallAvg = allVals.length ? allVals.reduce((a,b)=>a+b,0)/allVals.length : NaN;
+
+                    return {
+                        id: d.id,
+                        name: d.name,
+                        dateObj: new Date(d.dateStr),
+                        subjects,
+                        students,
+                        classAvg,
+                        overallAvg
+                    };
+                });
+                
+                GLOBAL_activeDatasetId = state.activeId;
+                
+                // If active ID not found in loaded datasets, pick first
+                if(GLOBAL_datasets.length && !GLOBAL_datasets.find(d=>d.id===GLOBAL_activeDatasetId)) {
+                    GLOBAL_activeDatasetId = GLOBAL_datasets[0].id;
+                }
+                
+                return true;
+            } catch(e) {
+                console.error("Error loading state", e);
+                return false;
             }
         }
 
-        // Fetch and render (store globals so report generator can use them)
-        let GLOBAL_students = [];
-        let GLOBAL_subjects = [];
-        let GLOBAL_classAvg = [];
-        let GLOBAL_overallAvg = NaN;
+        // Initialize
+        if(loadState() && GLOBAL_datasets.length > 0) {
+            sortDatasets();
+            updateDatasetSelector();
+            renderApp();
+        } else {
+             fetch('data/voti-1g-novembre.csv').then(r => {
+                 if(r.ok) return r.text();
+                 throw new Error('No default csv');
+             }).then(csv => {
+                addDataset(csv, 'voti-1g-novembre.csv');
+             }).catch(e => console.log('No default csv found or error loading'));
+        }
 
-        fetch('data/voti-1g-novembre.csv').then(r => r.text()).then(csv => {
-            processCSV(csv);
-        });
-
-        // Handle file input for manual CSV upload
+        // Handle file input for manual CSV upload (supports multiple)
         document.getElementById('csv-file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const csv = event.target.result;
-                    processCSV(csv);
-                };
-                reader.readAsText(file);
+            const files = Array.from(e.target.files);
+            if (files.length) {
+                let processed = 0;
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const csv = event.target.result;
+                        addDataset(csv, file.name);
+                        processed++;
+                        // If all processed, update UI
+                        if(processed === files.length) {
+                            renderApp();
+                        }
+                    };
+                    reader.readAsText(file);
+                });
             }
         });
 
-        // Process CSV data and render table
-        function processCSV(csv) {
+        // Add a new dataset
+        function addDataset(csv, filename) {
             const data = parseCSVToObject(csv);
+            // Basic validation
+            if (!data || !data.length) return;
+            
             const subjects = Object.keys(data[0]).slice(2);
             const students = data.map(row => ({
                 id: row[Object.keys(row)[0]],
@@ -443,8 +629,9 @@
             }));
 
             // Compute class averages per subject
+            // Compute class averages per subject
             const classAvg = subjects.map((_, i) => {
-                const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                const vals = students.map(s => s.grades[i]).filter(v => typeof v === 'number' && !isNaN(v));
                 return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
             });
 
@@ -452,19 +639,231 @@
             const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
             const overallAvg = allVals.length ? allVals.reduce((a,b)=>a+b,0)/allVals.length : NaN;
 
-            // store globals
-            GLOBAL_students = students;
-            GLOBAL_subjects = subjects;
-            GLOBAL_classAvg = classAvg;
-            GLOBAL_overallAvg = overallAvg;
+            // Generate ID and Date
+            const id = 'ds_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+            
+            // Try to guess date from filename (e.g. "novembre", "2024-11") or use current
+            let dateName = filename.replace('.csv', '');
+            let dateObj = new Date();
+            
+            // Simple heuristic for month names in Italian
+            const months = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+            const lowerName = filename.toLowerCase();
+            const foundMonthIdx = months.findIndex(m => lowerName.includes(m));
+            if (foundMonthIdx !== -1) {
+                // If year is not found, assume current year or academic year logic? 
+                // For simplicity, default to current year.
+                dateObj = new Date(new Date().getFullYear(), foundMonthIdx, 1);
+            } else {
+                // otherwise check if we can parse YYYY-MM
+                const match = filename.match(/(\d{4})[-_](\d{1,2})/);
+                if(match) {
+                     dateObj = new Date(parseInt(match[1]), parseInt(match[2])-1, 1);
+                }
+            }
 
-            // expose globals on window for debugging if needed
-            window.GLOBAL_students = GLOBAL_students;
-            window.GLOBAL_subjects = GLOBAL_subjects;
-            window.GLOBAL_classAvg = GLOBAL_classAvg;
-            window.GLOBAL_overallAvg = GLOBAL_overallAvg;
+            const newDataset = {
+                id,
+                name: dateName, // Initial name is filename
+                dateObj: dateObj,
+                students: students,
+                subjects: subjects,
+                classAvg: classAvg,
+                overallAvg: overallAvg
+            };
 
-            renderTable(students, subjects, classAvg);
+            GLOBAL_datasets.push(newDataset);
+            
+            // Sort by date descending
+            sortDatasets();
+
+            // Setup UI
+            updateDatasetSelector();
+            renderDatasetList(); // Update modal list if open
+            if(GLOBAL_datasets.length === 1) {
+                setActiveDataset(id);
+            } else {
+                saveState(); // just save if added
+            }
+        }
+
+        function sortDatasets() {
+            GLOBAL_datasets.sort((a,b) => b.dateObj - a.dateObj);
+        }
+
+        function setActiveDataset(id) {
+            GLOBAL_activeDatasetId = id;
+            updateDatasetSelector();
+            renderApp();
+            saveState();
+        }
+
+        function updateDatasetSelector() {
+            const container = document.getElementById('dataset-selector-container');
+            const selector = document.getElementById('dataset-selector');
+            
+            if (GLOBAL_datasets.length > 0) {
+                container.style.display = 'flex';
+                selector.innerHTML = '';
+                GLOBAL_datasets.forEach(ds => {
+                    const opt = document.createElement('option');
+                    opt.value = ds.id;
+                    const dateStr = ds.dateObj.toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
+                    opt.textContent = `${ds.name} (${dateStr})`;
+                    if (ds.id === GLOBAL_activeDatasetId) opt.selected = true;
+                    selector.appendChild(opt);
+                });
+                
+                selector.onchange = (e) => {
+                    setActiveDataset(e.target.value);
+                };
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        // --- Dataset Management Modal Logic ---
+        function openDatasetModal() {
+            const modal = document.getElementById('dataset-modal');
+            renderDatasetList();
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            document.getElementById('main-content').classList.add('blur');
+        }
+
+        function closeDatasetModal() {
+            const modal = document.getElementById('dataset-modal');
+            // update selector after closing in case reordering happened due to date changes
+            sortDatasets();
+            updateDatasetSelector();
+            renderApp(); // re-render to reflect changes
+            
+            closeWithAnim(modal, 'dataset-popup', () => {
+                modal.style.display = 'none';
+            });
+        }
+
+        function renderDatasetList() {
+            const list = document.getElementById('dataset-list');
+            list.innerHTML = '';
+            if (GLOBAL_datasets.length === 0) {
+                list.innerHTML = '<div style="color:#777; font-style:italic; text-align:center; padding:10px;">Nessun dataset. Aggiungine uno!</div>';
+                return;
+            }
+
+            GLOBAL_datasets.forEach(ds => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display:flex; align-items:center; gap:8px; background:#f9fafc; padding:10px; border-radius:8px; border:1px solid #eef1f6;';
+                
+                // Name Input
+                const nameInp = document.createElement('input');
+                nameInp.type = 'text';
+                nameInp.value = ds.name;
+                nameInp.placeholder = 'Nome Dataset';
+                nameInp.style.cssText = 'flex:1; padding:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;';
+                nameInp.onchange = (e) => { ds.name = e.target.value; updateDatasetSelector(); saveState(); };
+
+                // Date Input (Month/Year)
+                // HTML5 month input is YYYY-MM
+                const dateInp = document.createElement('input');
+                dateInp.type = 'month';
+                // value format: YYYY-MM
+                const yyyy = ds.dateObj.getFullYear();
+                const mm = String(ds.dateObj.getMonth() + 1).padStart(2, '0');
+                dateInp.value = `${yyyy}-${mm}`;
+                dateInp.style.cssText = 'width:130px; padding:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;';
+                dateInp.onchange = (e) => {
+                    if(e.target.value) {
+                         const [y, m] = e.target.value.split('-');
+                         ds.dateObj = new Date(parseInt(y), parseInt(m)-1, 1);
+                         sortDatasets();
+                         saveState();
+                    }
+                };
+
+                // Delete Button
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '&times;';
+                delBtn.title = 'Elimina dataset';
+                delBtn.style.cssText = 'background:#ffebee; color:#c62828; border:none; width:28px; height:28px; border-radius:4px; cursor:pointer; font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center;';
+                delBtn.onclick = () => {
+                    if(confirm(`Eliminare il dataset "${ds.name}"?`)) {
+                        GLOBAL_datasets = GLOBAL_datasets.filter(d => d.id !== ds.id);
+                        if(GLOBAL_activeDatasetId === ds.id) {
+                            GLOBAL_activeDatasetId = GLOBAL_datasets.length ? GLOBAL_datasets[0].id : null;
+                        }
+                        renderDatasetList();
+                        updateDatasetSelector();
+                        renderApp();
+                        saveState();
+                    }
+                };
+
+                item.appendChild(nameInp);
+                item.appendChild(dateInp);
+                item.appendChild(delBtn);
+                list.appendChild(item);
+            });
+        }
+
+        // Wire Modal Events
+        document.getElementById('open-dataset-mgr').addEventListener('click', openDatasetModal);
+        document.getElementById('dataset-close').addEventListener('click', closeDatasetModal);
+        document.getElementById('dataset-modal').addEventListener('click', (e) => {
+             if(e.target.id === 'dataset-modal') closeDatasetModal();
+        });
+        document.getElementById('modal-add-csv-btn').addEventListener('click', () => {
+            document.getElementById('csv-file-input').click();
+        });
+        document.getElementById('modal-clear-storage-btn').addEventListener('click', () => {
+             if(confirm('Attenzione: Questa operazione cancellerà tutti i dati salvati e ricaricherà la pagina. Continuare?')) {
+                 localStorage.removeItem(STORAGE_KEY);
+                 location.reload();
+             }
+        });
+
+        function renderApp() {
+            const dataset = getActiveDataset();
+            if (!dataset) {
+                document.getElementById('app').innerHTML = '<div style="text-align:center;color:#666;margin-top:40px">Nessun dato caricato. Carica un file CSV per iniziare.</div>';
+                return;
+            }
+            renderTable(dataset);
+        }
+
+
+        // Color interpolation helper
+        function interpolateColor(color1, color2, factor) {
+            const r1 = parseInt(color1.substring(1, 3), 16);
+            const g1 = parseInt(color1.substring(3, 5), 16);
+            const b1 = parseInt(color1.substring(5, 7), 16);
+            const r2 = parseInt(color2.substring(1, 3), 16);
+            const g2 = parseInt(color2.substring(3, 5), 16);
+            const b2 = parseInt(color2.substring(5, 7), 16);
+            const r = Math.round(r1 + factor * (r2 - r1));
+            const g = Math.round(g1 + factor * (g2 - g1));
+            const b = Math.round(b1 + factor * (b2 - b1));
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function getGradeStyle(val) { 
+            if (val === null || isNaN(val)) return { bg: '#eea', color: '#888' }; // Should use specific dash style from render
+            if (val >= 6) {
+                // 6 -> 10 : Light Green to Dark Green
+                const factor = Math.min(1, Math.max(0, (val - 6) / 4.0));
+                // If val > 9, use white text for contrast against dark green
+                const color = val > 9 ? '#fff' : '#003300';
+                return { bg: interpolateColor('#e8f5e9', '#66bb6a', factor), color: color };
+            } else {
+                // < 6 -> 2 : shades of RED
+                // 6 (almost) -> Light Red (#ffebee)
+                // 2 -> Dark Red (#b71c1c)
+                const factor = Math.min(1, Math.max(0, (6 - val) / 4.0));
+                const bg = interpolateColor('#ffebee', '#c62828', factor);
+                // Text color: if bg is dark, use white
+                const textColor = factor > 0.5 ? '#fff' : '#000';
+                return { bg: bg, color: textColor };
+            }
         }
 
         function yellowShade(val, max) {
@@ -474,14 +873,23 @@
             if (val < max * 0.75) return 'yellow-shade-4';
             return 'yellow-shade-5';
         }
-        function renderTable(students, subjects, classAvg) {
+
+        function renderTable(dataset) {
+            const { students, subjects, classAvg, overallAvg } = dataset;
+            const prevDataset = getPreviousDataset();
+
             const app = document.getElementById('app');
+            app.innerHTML = ''; // Clear prev content
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-wrapper';
             const table = document.createElement('table');
+
 
             // Build colgroup: first two columns fixed, last three fixed, subjects share remaining space
             const colgroup = document.createElement('colgroup');
             const colNum = document.createElement('col'); colNum.style.width = '48px'; colgroup.appendChild(colNum);
-            const colName = document.createElement('col'); colName.style.width = '240px'; colgroup.appendChild(colName);
+            const colName = document.createElement('col'); colName.style.width = '180px'; colgroup.appendChild(colName);
+            const colAvg = document.createElement('col'); colAvg.style.width = '70px'; colgroup.appendChild(colAvg); // New Average Col
             for (let i = 0; i < subjects.length; i++) {
                 colgroup.appendChild(document.createElement('col'));
             }
@@ -496,9 +904,10 @@
             // Build header with data-col indices so sorting knows which td index to use
             let headersHtml = '<tr>';
             headersHtml += `<th class="sortable" data-col="0">N.</th>`;
-            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.78rem;color:#556">(Ordina: Nome)</span></th>`;
-            displaySubjects.forEach((s, i) => { headersHtml += `<th class="subject sortable" data-col="${2 + i}">${s}</th>`; });
-            const colBelowIdx = 2 + subjects.length;
+            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.78rem;color:#556">(A-Z)</span></th>`;
+            headersHtml += `<th class="sortable" data-col="2">Media</th>`;
+            displaySubjects.forEach((s, i) => { headersHtml += `<th class="subject sortable" data-col="${3 + i}">${s}</th>`; });
+            const colBelowIdx = 3 + subjects.length;
             headersHtml += `<th class="sep-col sortable" data-col="${colBelowIdx}">&lt;6</th>`;
             headersHtml += `<th class="sep-col sortable" data-col="${colBelowIdx + 1}">Deficit</th>`;
             headersHtml += `<th class="sep-col deficit-medio-head sortable" data-col="${colBelowIdx + 2}">DEF. MED.</th>`;
@@ -508,43 +917,101 @@
 
             // Precompute student averages to use for correlations
             const studentAvgs = students.map(s => {
-                const vals = s.grades.filter(v => !isNaN(v));
+                const vals = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
                 return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
             });
 
             const tbody = document.createElement('tbody');
             students.forEach((s, idx) => {
-                const validGrades = s.grades.filter(v => !isNaN(v));
+                const validGrades = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
                 const avg = studentAvgs[idx];
-                const below = s.grades.filter(g => !isNaN(g) && g < 6).length;
-                const deficit = s.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+                const below = s.grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).length;
+                const deficit = s.grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
                 const ratio = below > 0 ? (deficit / below).toFixed(2) : '';
                 const belowClass = yellowShade(below, subjects.length);
                 const deficitClass = yellowShade(deficit, subjects.length * 6);
                 const avgClass = isNaN(avg) ? '' : (avg >= 6 ? 'green' : 'red');
                 const tr = document.createElement('tr');
+                    
+                    // Student Avg Trend Logic
+                    let avgTrendArrow = '';
+                    let avgTrendClass = 'flat';
+                    if(prevDataset) {
+                        const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
+                        if(prevStudent) {
+                             const prevVals = prevStudent.grades.filter(v=>!isNaN(v));
+                             const prevAvg = prevVals.length ? prevVals.reduce((a,b)=>a+b,0)/prevVals.length : NaN;
+                             if(!isNaN(prevAvg) && !isNaN(avg)) {
+                                 if(avg > prevAvg + 0.05) { avgTrendArrow = '▲'; avgTrendClass = 'up'; }
+                                 else if(avg < prevAvg - 0.05) { avgTrendArrow = '▼'; avgTrendClass = 'down'; }
+                                 else { avgTrendArrow = '─'; avgTrendClass = 'flat'; }
+                             }
+                        }
+                    }
+
                     tr.innerHTML =
-                    `<td class="num-col">${s.id}</td><td class="name-cell">${s.name}${isNaN(avg) ? '' : ' ' + `<span class='avg ${avgClass}'>${avg.toFixed(2)}</span>`}</td>` +
+                    `<td class="num-col">${s.id}</td>` + 
+                    `<td class="name-cell">${s.name}</td>` +
+                    `<td><div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+                        <span class='avg ${avgClass}' style="${isNaN(avg)?'color:#ccc;background:#f7f7f7;':''}">${isNaN(avg) ? '-' : avg.toFixed(2)}</span>
+                        ${!isNaN(avg) ? `<span class="grade-arrow ${avgTrendClass}" style="font-size:10px;">${avgTrendArrow}</span>` : ''}
+                     </div></td>` +
                     s.grades.map((g, i) => {
-                        const missing = isNaN(g);
+                        const missing = g === null || isNaN(g);
                         const cls = `grade${missing ? ' missing' : ''}`;
-                        const style = missing ? '' : `background:${gradeColor(g)};color:${g >= 6 ? '#185c18' : '#f9b6c1'}`;
+                        const styleObj = getGradeStyle(g);
+                        // Old styling: colored background, no dot
+                        const style = `background:${styleObj.bg}; color:${styleObj.color}; border:1px solid rgba(0,0,0,0.05);`;
                         const text = missing ? '-' : g;
+                        
                         // determine arrow based on comparison with class average for this subject
                         let arrow = '';
                         let arrowClass = '';
                         const subjAvg = classAvg && classAvg[i];
-                        if (missing || typeof subjAvg === 'undefined' || isNaN(subjAvg)) {
-                            arrow = '';
-                            arrowClass = '';
-                        } else if (g > subjAvg) {
-                            arrow = '▲'; arrowClass = 'up';
-                        } else if (g < subjAvg) {
-                            arrow = '▼'; arrowClass = 'down';
-                        } else {
-                            arrow = '─'; arrowClass = 'flat';
+                        
+                        // Trend Logic: Compare with previous dataset if available
+                        let trendArrow = '';
+                        let trendClass = '';
+                        let comparisonValue = null;
+
+                        // Try to find same student in previous dataset
+                        if (prevDataset) {
+                            const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
+                            if (prevStudent) {
+                                const prevGrade = prevStudent.grades[i];
+                                if (!isNaN(prevGrade) && !isNaN(g)) {
+                                    comparisonValue = prevGrade;
+                                }
+                            }
                         }
-                        return `<td><span class="grade-wrap"><span class="${cls}" style="${style}">${text}</span><span class="grade-arrow ${arrowClass}">${arrow}</span></span></td>`;
+
+                        if (!isNaN(g) && comparisonValue !== null) {
+                            if (g > comparisonValue) {
+                                trendArrow = '▲'; trendClass = 'up';
+                            } else if (g < comparisonValue) {
+                                trendArrow = '▼'; trendClass = 'down';
+                            } else {
+                                trendArrow = '─'; trendClass = 'flat';
+                            }
+                        }
+
+                        // Avg Indicator logic (dash below arrow)
+                        let avgIndicatorClass = '';
+                        if (!isNaN(g) && !isNaN(subjAvg)) {
+                            if (g > subjAvg) avgIndicatorClass = 'green';
+                            else if (g < subjAvg) avgIndicatorClass = 'red';
+                            else avgIndicatorClass = 'flat';
+                        }
+                        
+                        return `<td><div class="grade-wrap">
+                                    <span class="${cls}" style="${style}">${text}</span>
+                                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                                        <span class="grade-arrow ${trendClass}" style="font-size:10px; margin-bottom:2px;">${trendArrow}</span>
+                                        ${avgIndicatorClass ? `<div style="width:6px; height:2px; background:${avgIndicatorClass==='green'?'#1e7a1e':(avgIndicatorClass==='red'?'#d21919':'#ccc')}; border-radius:1px;"></div>` : ''}
+                                    </div>
+                                </div></td>`;
+                        
+
                     }).join('') +
                     `<td class="below6-col ${belowClass} sep-col">${below}</td>` +
                     `<td class="deficit-col ${deficitClass} sep-col">${deficit.toFixed(2)}</td>` +
@@ -581,8 +1048,10 @@
             // Build footer rows: class mean, std dev, correlation (subject vs student overall avg)
             const tfoot = document.createElement('tfoot');
             // overall class average across all numeric grades
-            const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
-            const overallAvg = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : NaN;
+            const allVals = students.flatMap(s => s.grades.filter(v => typeof v === 'number' && !isNaN(v)));
+            const overallAvgCalc = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : NaN;
+            // Use dataset.overallAvg or calculated one (should be same)
+            const overallAvgVal = dataset.overallAvg;
             const overallStd = allVals.length ? stddev(allVals) : NaN;
             // Compute per-student summary arrays for the right-hand columns (<6 count, deficit sum, deficit medio)
             const belowCounts = students.map(s => s.grades.filter(g => !isNaN(g) && g < 6).length);
@@ -592,7 +1061,8 @@
 
             // Media classe row
             const avgRow = document.createElement('tr');
-            avgRow.innerHTML = `<th colspan="2">Media classe ${isNaN(overallAvg) ? '' : `<strong>${fmt(overallAvg)}</strong>`}</th>` +
+            avgRow.innerHTML = `<th colspan="2">Media classe ${isNaN(overallAvgVal) ? '' : `<strong>${fmt(overallAvgVal)}</strong>`}</th>` +
+                `<td></td>` + // Empty cell for new Avg column
                 subjects.map((_, i) => `<td>${fmt(classAvg[i])}</td>`).join('') +
                 `<td class="sep-col">${fmt(mean(belowCounts))}</td>` +
                 `<td class="sep-col">${fmt(mean(deficitsArr))}</td>` +
@@ -605,7 +1075,7 @@
                 const vals = students.map((s, si) => s.grades[i]).filter(v => !isNaN(v));
                 return `<td>${isNaN(vals[0]) ? '' : stddev(vals).toFixed(2)}</td>`;
             }).join('');
-            sdRow.innerHTML = `<th colspan="2">Dev. std ${isNaN(overallStd) ? '' : `<strong>${fmt(overallStd)}</strong>`}</th>` + sdCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
+            sdRow.innerHTML = `<th colspan="2">Dev. std ${isNaN(overallStd) ? '' : `<strong>${fmt(overallStd)}</strong>`}</th><td></td>` + sdCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
             tfoot.appendChild(sdRow);
 
             // Correlation row (subject grade vs student overall average)
@@ -621,7 +1091,7 @@
                 const c = pearson(x, y);
                 return `<td>${isNaN(c) ? '' : c.toFixed(2)}</td>`;
             }).join('');
-            corrRow.innerHTML = `<th colspan="2">Corr. vs media stud.</th>` + corrCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
+            corrRow.innerHTML = `<th colspan="2">Corr. vs media stud.</th><td></td>` + corrCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
             tfoot.appendChild(corrRow);
 
             table.appendChild(tfoot);
@@ -638,7 +1108,9 @@
                         firstTh.title = 'Clicca per mostrare distribuzione medie studenti';
                         firstTh.addEventListener('click', () => {
                             // compute student overall averages
-                            const vals = students.map(s => {
+                            // Use active dataset
+                            const dataset = getActiveDataset();
+                            const vals = dataset.students.map(s => {
                                 const vs = s.grades.filter(v => !isNaN(v));
                                 return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : NaN;
                             }).filter(v => !isNaN(v));
@@ -660,15 +1132,21 @@
                         td.title = `Clicca per mostrare distribuzione voti in ${subjects[i]}`;
                         td.addEventListener('click', () => {
                             // gather raw values for this subject (keeping order) and compute stats
-                            const valsAll = students.map(s => s.grades[i]);
-                            const vals = valsAll.filter(v => !isNaN(v));
+                            // We need to fetch data from the *Active* dataset (or currently selected in histogram? default active)
+                            const dataset = getActiveDataset();
+                            const valsAll = dataset.students.map(s => s.grades[i]);
+                            const vals = valsAll.filter(v => typeof v === 'number' && !isNaN(v));
                             const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
                             const sd = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); };
                             const subjAvg = vals.length ? mean(vals) : NaN;
                             const subjStd = vals.length ? sd(vals) : NaN;
-                            // compute correlation between subject grades and student averages (align indices)
+                            // compute correlation
+                            const studentAvgs = dataset.students.map(s => {
+                                const vs = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
+                                return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : NaN;
+                            });
                             const x = [], y = [];
-                            students.forEach((s, idx) => {
+                            dataset.students.forEach((s, idx) => {
                                 const gv = s.grades[i];
                                 const av = studentAvgs[idx];
                                 if (!isNaN(gv) && !isNaN(av)) { x.push(gv); y.push(av); }
@@ -683,7 +1161,7 @@
                                 const den = sa*sb; return den===0?NaN:num/den;
                             };
                             const corr = pearson(x,y);
-                            showHistogram(`Distribuzione: ${subjects[i]}`, vals, { subjAvg, subjStd, corr });
+                            showHistogram(`Distribuzione: ${subjects[i]}`, vals, { subjAvg, subjStd, corr }, subjects[i]);
                         });
                     }
                 } catch (e) { /* ignore */ }
@@ -779,8 +1257,8 @@
                     rows.forEach(r => tbody.appendChild(r));
                 }
             })(table, students, studentAvgs);
-            app.innerHTML = '';
-            app.appendChild(table);
+            wrapper.appendChild(table);
+            app.appendChild(wrapper);
         }
         // Helper to animate closing popups and restore UI state with synchronized blur fade
         function closeWithAnim(modal, popupId, onClosed) {
@@ -798,6 +1276,10 @@
 
         // Radar chart as modal popup
         let chart;
+        // Store history for toggling
+        let CHART_HISTORY = [];
+        let CHART_FOCUSED_INDEX = -1; // -1 means default view (latest focused)
+
         function showChart(student, subjects, classAvg, stats) {
             const modal = document.getElementById('radar-modal');
             const title = document.getElementById('radar-title');
@@ -805,178 +1287,493 @@
             const hc = document.getElementById('histogram-controls');
             modal.classList.add('active');
             document.getElementById('main-content').classList.add('blur');
-            // ensure histogram controls are hidden and stats panel visible
-            const statsPanel = document.getElementById('radar-stats');
-            if (hc) hc.style.display = 'none';
-            if (statsPanel) statsPanel.style.display = '';
-            // recreate the canvas to ensure a fresh context and remove any previous canvas listeners
+            //ensure histogram controls are hidden and stats panel visible
+            // const statsPanel = document.getElementById('radar-stats');
+            // if (hc) hc.style.display = 'none';
+            // if (statsPanel) statsPanel.style.display = '';
+
+            // 1. Gather History for this student
+            // We match by ID preferably, or Name
+            const sortedDatasets = GLOBAL_datasets.slice().sort((a,b) => a.dateObj - b.dateObj);
+            const history = sortedDatasets.map(ds => {
+                const s = ds.students.find(x => x.id === student.id || x.name === student.name);
+                return s ? { dataset: ds, student: s } : null;
+            }).filter(x => x);
+
+            CHART_HISTORY = history;
+            // Default focus is the last one (latest)
+            CHART_FOCUSED_INDEX = history.length - 1;
+
+            // Re-render canvas
             const popup = document.getElementById('radar-popup');
-            const oldCanvas = popup.querySelector('#chart');
-            if (oldCanvas) oldCanvas.remove();
-            const newCanvas = document.createElement('canvas'); newCanvas.id = 'chart';
-            popup.appendChild(newCanvas);
+            
+            // Remove old chart container if exists? Actually we just clear canvas context or destroy chart
+            // For now let's reuse valid container
+            let container = popup.querySelector('.chart-container');
+            if(!container) {
+                 container = document.createElement('div');
+                 container.className = 'chart-container';
+                 popup.appendChild(container); // should append at right place?
+            }
+             
+            // Check canvas
+            let newCanvas = container.querySelector('canvas');
+            if(!newCanvas) {
+                newCanvas = document.createElement('canvas'); 
+                newCanvas.id = 'chart';
+                container.appendChild(newCanvas);
+            }
+
             const ctx = newCanvas.getContext('2d');
+            
             if (chart) { try { chart.destroy(); } catch (e) {} chart = null; }
-            // Only plot grades that are not NaN
-            const grades = student.grades.map((v, i) => ({ v, i })).filter(x => !isNaN(x.v));
-            const filteredSubjects = grades.map(x => subjects[x.i]);
-            const filteredLabels = filteredSubjects.map(s => s === 'MATEMATICA' ? 'MATE' : s);
-            const filteredGrades = grades.map(x => x.v);
-            const filteredClassAvg = grades.map(x => isNaN(classAvg[x.i]) ? null : classAvg[x.i]);
-            // compute student summary and average values
-            const studentBelow = student.grades.filter(g => !isNaN(g) && g < 6).length;
-            const studentDeficit = student.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
-            const studentRatio = studentBelow > 0 ? (studentDeficit / studentBelow) : NaN;
-            const studentValsAll = student.grades.filter(v => !isNaN(v));
-            const studentOverallAvg = studentValsAll.length ? studentValsAll.reduce((a,b)=>a+b,0)/studentValsAll.length : NaN;
-            // populate stats panel
-            const sb = document.getElementById('stat-below');
-            const sd = document.getElementById('stat-deficit');
-            const sr = document.getElementById('stat-ratio');
-            if (sb) sb.textContent = studentBelow;
-            if (sd) sd.textContent = isNaN(studentDeficit) ? '-' : studentDeficit.toFixed(2);
-            if (sr) sr.textContent = isNaN(studentRatio) ? '-' : studentRatio.toFixed(2);
-            // show class averages if provided
-            if (stats) {
-                if (sb) sb.innerHTML = `${studentBelow} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.belowAvg)?'-':stats.belowAvg.toFixed(2)})</span>`;
-                if (sd) sd.innerHTML = `${isNaN(studentDeficit)?'-':studentDeficit.toFixed(2)} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.deficitAvg)?'-':stats.deficitAvg.toFixed(2)})</span>`;
-                if (sr) sr.innerHTML = `${isNaN(studentRatio)?'-':studentRatio.toFixed(2)} <span style="color:#6b7280;font-weight:600;margin-left:6px;font-size:0.85rem">(avg ${isNaN(stats.ratioAvg)?'-':stats.ratioAvg.toFixed(2)})</span>`;
-            }
-            // compute and show Score: student's overall avg minus class overall average
-            const scoreEl = document.getElementById('stat-score');
-            if (scoreEl) {
-                const classOverall = stats && typeof stats.classOverallAvg !== 'undefined' ? stats.classOverallAvg : NaN;
-                if (isNaN(studentOverallAvg) || isNaN(classOverall)) {
-                    scoreEl.textContent = '-';
-                } else {
-                    const diff = studentOverallAvg - classOverall;
-                    const sign = diff > 0 ? '+' : (diff < 0 ? '' : '');
-                    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '─');
-                    const arrowCls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'flat');
-                    scoreEl.innerHTML = `${sign}${diff.toFixed(2)} <span class="stat-arrow ${arrowCls}">${arrow}</span>`;
+
+            renderRadar(ctx, true);
+        }
+
+        function renderRadar(ctx, animate = false) {
+            if(!CHART_HISTORY.length) return;
+
+            // The focused entry determines the "Main" display (stats, bold color)
+            const focusedEntry = CHART_HISTORY[CHART_FOCUSED_INDEX];
+            const focusedStudent = focusedEntry.student;
+            const focusedDataset = focusedEntry.dataset;
+            
+            // Update Stats Panel based on focused student
+            updateRadarStats(focusedStudent, focusedDataset);
+
+            // Prepare Labels (Subjects)
+            // We use subjects from the focused dataset
+            const subjects = focusedDataset.subjects;
+            // Calculate Trends for Labels: Compare Focused vs Previous-in-History (if any)
+            const prevEntry = CHART_FOCUSED_INDEX > 0 ? CHART_HISTORY[CHART_FOCUSED_INDEX - 1] : null;
+            
+            // Prepare trend info for labels (but don't bake into strings)
+            const trendInfos = subjects.map((subj, i) => {
+                let info = { label: subj === 'MATEMATICA' ? 'MATE' : subj, color: '#2b3b4a', arrow: '' };
+                if (prevEntry) {
+                    const curr = focusedStudent.grades[i];
+                    const prevIdx = prevEntry.dataset.subjects.indexOf(subj);
+                    if (prevIdx !== -1) {
+                         const prev = prevEntry.student.grades[prevIdx];
+                         if (!isNaN(curr) && !isNaN(prev)) {
+                             if (curr > prev) { info.color = '#1ec01e'; info.arrow = '▲'; }
+                             else if (curr < prev) { info.color = '#d21919'; info.arrow = '▼'; }
+                         }
+                    }
                 }
-            }
-            // plugin to draw value labels for student's dataset only
-            const valueLabelsPlugin = {
-                id: 'valueLabels',
-                afterDatasetsDraw(chart) {
+                return info;
+            });
+            // Labels for chart data (just names)
+            const labels = trendInfos.map(t => t.label);
+
+            // Prepare Datasets
+            // We show ALL history, but non-focused ones are "ghosted"
+            const sets = CHART_HISTORY.map((entry, idx) => {
+                const isFocused = (idx === CHART_FOCUSED_INDEX);
+                
+                // Opacity Logic
+                // Focused: Border 1, Fill 0.1 (more transparent area)
+                // History: Border ~0.4, Fill 0.05. Dots less transparent (0.8 -> visible)
+                
+                let alphaBorder = 0.3;
+                let alphaBg = 0.05;
+                let order = idx;
+
+                if (isFocused) {
+                    alphaBorder = 1;
+                    alphaBg = 0.1; // More transparent area
+                    order = 999; 
+                } else {
+                    const p = (idx + 1) / CHART_HISTORY.length;
+                    alphaBorder = 0.2 + (0.3 * p); 
+                    alphaBg = 0.02 + (0.03 * p);
+                }
+
+                const colorBase = '25, 118, 210'; // #1976d2
+                
+                // Point colors
+                const ptColors = entry.student.grades.map(g => {
+                    if (isNaN(g)) return 'transparent';
+                    return g >= 6 ? '#1ec01e' : '#d21919';
+                });
+                
+                // History dots less transparent?
+                // We use ptColors naturally. If isFocused, full opacity.
+                // If not focused, we used `rgba(colorBase, 0.2)` -> Now we want dots visible?
+                // User: "make the dots of non used periods... less transparent"
+                // So let's use the actual red/green colors but maybe with 0.6 alpha?
+                // Or just the same colors. Let's make them visible but smaller.
+                
+                const hexToRgba = (hex, alpha) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+
+                let pointsBg;
+                if (isFocused) {
+                   pointsBg = ptColors;
+                } else {
+                   // Transparent dots for history
+                   pointsBg = ptColors.map(c => {
+                       if(c==='transparent') return c;
+                       return hexToRgba(c, 0.4); 
+                   });
+                }
+
+                const dsData = {
+                    label: entry.dataset.name, 
+                    data: alignGradesToSubjects(entry.student, entry.dataset.subjects, subjects), // align adds nulls for missing
+                    borderColor: `rgba(${colorBase}, ${alphaBorder})`,
+                    backgroundColor: `rgba(${colorBase}, ${alphaBg})`,
+                    pointBackgroundColor: pointsBg, 
+                    pointBorderColor: 'rgba(0,0,0,0)',
+                    pointRadius: isFocused ? 5 : 3, // History dots visible (3)
+                    pointHoverRadius: isFocused ? 7 : 5,
+                    fill: true,
+                    borderWidth: isFocused ? 3 : 1,
+                    order: order,
+                    _historyIndex: idx,
+                    spanGaps: false 
+                };
+                return dsData;
+            });
+            // ... (Average and limit lines push here)
+            sets.push({
+                 label: 'Media Classe',
+                 data: focusedDataset.classAvg,
+                 borderColor: 'rgba(255, 140, 0, 0.8)',
+                 backgroundColor: 'transparent',
+                 pointRadius: 0,
+                 borderWidth: 2,
+                 borderDash: [5,5],
+                 order: 1000
+            });
+            const limit6 = new Array(subjects.length).fill(6);
+            sets.push({
+                label: 'Sufficienza (6)',
+                data: limit6,
+                borderColor: 'rgba(40, 40, 40, 0.6)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                borderWidth: 1,
+                order: 1001
+            });
+
+            // Inline plugin to draw values INSIDE the radar
+            const valPlugin = {
+                id: 'valPlugin',
+                afterDatasetsDraw(chart, args, options) {
                     const ctx = chart.ctx;
-                    chart.data.datasets.forEach((dataset, dsIndex) => {
-                        if (dataset.label === 'Media Classe') return; // skip class avg
-                        const meta = chart.getDatasetMeta(dsIndex);
-                        meta.data.forEach((pt, i) => {
-                            const v = dataset.data[i];
-                            if (v === null || v === undefined) return;
-                            ctx.save();
-                            // color label same as point color if available
-                            let color = '#222';
-                            const pb = dataset.pointBackgroundColor;
-                            if (Array.isArray(pb)) color = pb[i] || color;
-                            else if (pb) color = pb;
-                            ctx.fillStyle = color;
-                            // white outline for label to keep contrast over the chart
-                            ctx.strokeStyle = '#ffffff';
-                            ctx.lineWidth = 3;
-                            ctx.font = '15px "Inter", system-ui, Arial';
-                            ctx.textAlign = 'center';
-                            // draw outline then fill; position a bit farther from the dot
-                            const textX = pt.x;
-                            const textY = pt.y - 14;
-                            ctx.strokeText(String(v), textX, textY);
-                            ctx.fillText(String(v), textX, textY);
-                            ctx.restore();
-                        });
+                    const rScale = chart.scales.r;
+                    const xCenter = rScale.xCenter;
+                    const yCenter = rScale.yCenter;
+
+                    chart.data.datasets.forEach((dataset, i) => {
+                        if (dataset._historyIndex === CHART_FOCUSED_INDEX) {
+                            const meta = chart.getDatasetMeta(i);
+                            meta.data.forEach((element, index) => {
+                                const val = dataset.data[index];
+                                if (val !== null && !isNaN(val)) {
+                                    // Calculate vector to center
+                                    const ex = element.x;
+                                    const ey = element.y;
+                                    const dx = xCenter - ex;
+                                    const dy = yCenter - ey;
+                                    const dist = Math.sqrt(dx*dx + dy*dy);
+                                    
+                                    // Move 20px towards center
+                                    const offset = 20; 
+                                    const u = dx / dist; // unit vector x
+                                    const v = dy / dist; // unit vector y
+                                    
+                                    const tx = ex + u * offset;
+                                    const ty = ey + v * offset;
+
+                                    ctx.fillStyle = '#000';
+                                    ctx.font = 'bold 12px Inter';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'middle';
+                                    // Fill background for readability? optional
+                                    // ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                                    // ctx.fillRect(tx - 10, ty - 8, 20, 16);
+                                    
+                                    ctx.fillStyle = '#000';
+                                    ctx.fillText(val, tx, ty);
+                                }
+                            });
+                        }
                     });
                 }
             };
 
+            // Plugin for HTML Subject Labels
+            const htmlLabelPlugin = {
+                id: 'htmlLabelPlugin',
+                afterRender(chart) {
+                     const container = chart.canvas.parentNode;
+                     // Ensure relative positioning
+                     if(getComputedStyle(container).position === 'static') {
+                         container.style.position = 'relative'; 
+                     }
+                     
+                     // Clear old labels
+                     let overlay = container.querySelector('.radar-labels-overlay');
+                     if(overlay) overlay.remove();
+                     
+                     overlay = document.createElement('div');
+                     overlay.className = 'radar-labels-overlay';
+                     overlay.style.pointerEvents = 'none';
+                     overlay.style.position = 'absolute';
+                     overlay.style.top = '0';
+                     overlay.style.left = '0';
+                     overlay.style.width = '100%';
+                     overlay.style.height = '100%';
+                     container.appendChild(overlay);
+
+                     const rScale = chart.scales.r;
+                     const count = chart.data.labels.length;
+                     // Radius to place text at. chart.drawingArea is internal usually, 
+                     // try distanceFromCenterForValue(max)
+                     // Or rScale.getPointPosition(index, distanceFromCenter)
+                     // We place them slightly outside scale.
+                     const maxVal = rScale.max;
+                     
+                     chart.data.labels.forEach((label, i) => {
+                         // get position for max value + padding
+                         // If max is 10, we go to 11?
+                         // Moving labels further out to prevent overlap. Used 1.8 padding.
+                         const point = rScale.getPointPositionForValue(i, maxVal + 1.8);
+                         
+                         const info = trendInfos[i];
+                         
+                         const div = document.createElement('div');
+                         div.style.position = 'absolute';
+                         div.style.left = `${point.x}px`;
+                         div.style.top = `${point.y}px`;
+                         div.style.transform = 'translate(-50%, -50%)';
+                         div.style.textAlign = 'center';
+                         div.style.fontFamily = 'Inter, sans-serif';
+                         div.style.fontSize = '13px';
+                         div.style.fontWeight = '600';
+                         div.style.color = '#2b3b4a'; // Neutral text color
+                         div.style.whiteSpace = 'nowrap';
+                         div.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)'; // Readability
+                         
+                         // Label + Colored Arrow
+                         div.innerHTML = `${info.label} <span style="color:${info.color}">${info.arrow}</span>`;
+                         
+                         overlay.appendChild(div);
+                     });
+                }
+            };
+
+            // Create Chart
             chart = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: filteredLabels,
-                    datasets: [
-                        {
-                            label: student.name,
-                            data: filteredGrades,
-                            borderColor: '#1976d2',
-                            // fill color depends on student's overall average
-                            backgroundColor: isNaN(studentOverallAvg) ? 'rgba(25,118,210,0.06)' : (studentOverallAvg >= 6 ? 'rgba(30,192,30,0.10)' : 'rgba(210,25,25,0.08)'),
-                            pointBackgroundColor: filteredGrades.map(v => v >= 6 ? '#1ec01e' : '#d21919'),
-                            pointBorderColor: 'rgba(0,0,0,0)',
-                            pointBorderWidth: 0,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
-                            fill: true,
-                            borderWidth: 2,
-                            order: 1
-                        },
-                        {
-                            label: 'Media Classe',
-                            data: filteredClassAvg,
-                            borderColor: 'rgba(25,118,210,0.5)',
-                            backgroundColor: 'rgba(25,118,210,0.12)',
-                            pointBackgroundColor: filteredClassAvg.map(v => v === null ? 'rgba(0,0,0,0)' : '#1976d2'),
-                            pointBorderColor: 'rgba(0,0,0,0)',
-                            pointBorderWidth: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            fill: false,
-                            borderWidth: 2,
-                            order: 2
-                        }
-                    ]
+                    labels: labels,
+                    datasets: sets
                 },
-                plugins: [valueLabelsPlugin],
+                plugins: [valPlugin, htmlLabelPlugin],
                 options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { bottom: 20, top: 40 } }, // Added top padding to move radar down
+                    animation: {
+                        duration: animate ? 1000 : 0
+                    },
                     plugins: {
-                        legend: { labels: { color: '#1976d2', font: { size: 14 } } }
+                        legend: { display: false } // Disable default legend
                     },
                     scales: {
                         r: {
-                            angleLines: { color: '#bbb' },
-                            grid: { color: '#bbb', lineWidth: ctx => (ctx.tick && ctx.tick.value === 6) ? 2.2 : 1 },
-                            pointLabels: { color: '#222', font: { size: 13 } },
-                            min: 0, max: 10, ticks: { color: '#222', stepSize: 2 }
+                            angleLines: { color: '#eee' },
+                            grid: { color: '#eee', lineWidth: 1 },
+                            pointLabels: { display: false }, // HTML labels used instead
+                            min: 0, max: 10,
+                            ticks: { display: false, stepSize: 2 } 
                         }
                     }
                 }
             });
-            // Close logic: animate closing, then clean up chart and UI
-            document.getElementById('radar-close').onclick = () => {
-                closeWithAnim(modal, 'radar-popup', () => {
-                    if (statsPanel) statsPanel.style.display = '';
-                    if (hc) hc.style.display = 'none';
-                    if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
-                });
-            };
-            modal.onclick = e => {
-                if (e.target === modal) {
-                    closeWithAnim(modal, 'radar-popup', () => {
-                        if (statsPanel) statsPanel.style.display = '';
-                        if (hc) hc.style.display = 'none';
-                        if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
-                    });
-                }
+
+            // Create HTML Legend
+            renderRadarLegend(sets);
+            
+            // Re-attach close handlers explicitly
+            const closeBtn = document.getElementById('radar-close');
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeRadarModal();
             };
         }
 
+        function renderRadarLegend(datasets) {
+            const container = document.getElementById('radar-popup');
+            let legend = document.getElementById('radar-custom-legend');
+            if (legend) legend.remove();
+
+            legend = document.createElement('div');
+            legend.id = 'radar-custom-legend';
+            legend.style.display = 'flex';
+            legend.style.flexWrap = 'wrap';
+            legend.style.gap = '12px';
+            legend.style.justifyContent = 'center';
+            legend.style.marginBottom = '20px'; // Increased margin
+            legend.style.marginTop = '10px'; // Added margin top
+            legend.style.fontSize = '12px';
+
+            // Filter relevant datasets: History, Class Avg, Limit
+            // History items: index < CHART_HISTORY.length
+            datasets.forEach((ds, i) => {
+                // Determine type
+                let text = ds.label;
+                let color = ds.borderColor; // Use border color for indicator
+                let isFocused = (ds._historyIndex === CHART_FOCUSED_INDEX);
+                
+                // Styling
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.gap = '6px';
+                item.style.cursor = 'pointer';
+                item.style.opacity = isFocused ? '1' : '0.6';
+                item.style.fontWeight = isFocused ? 'bold' : 'normal';
+
+                const dot = document.createElement('div');
+                dot.style.width = '10px';
+                dot.style.height = '10px';
+                dot.style.borderRadius = '50%';
+                // Strip alpha from color for legend dot if needed, but rgba is fine
+                dot.style.background = color;
+                
+                const span = document.createElement('span');
+                span.textContent = text;
+                span.style.color = '#333';
+
+                item.appendChild(dot);
+                item.appendChild(span);
+
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    if (typeof ds._historyIndex !== 'undefined') {
+                         if (CHART_FOCUSED_INDEX !== ds._historyIndex) {
+                             CHART_FOCUSED_INDEX = ds._historyIndex;
+                             if(chart) chart.destroy();
+                             const ctx = document.getElementById('chart').getContext('2d');
+                             renderRadar(ctx, false);
+                         }
+                    }
+                };
+
+                legend.appendChild(item);
+            });
+
+            // Insert before chart container or stats
+            const stats = document.getElementById('radar-stats');
+            if(stats) {
+                stats.parentNode.insertBefore(legend, stats.nextSibling); // Insert after stats (before chart?)
+                // Actually before chart is better. Chart is canvas sibling or container.
+                // Popup structure: close, title, stats, controls, hist-stats, chart.
+                // Insert after controls?
+                const controls = document.getElementById('histogram-controls');
+                if(controls) controls.parentNode.insertBefore(legend, controls.nextSibling);
+            }
+        }
+        
+        function closeRadarModal() {
+            const modal = document.getElementById('radar-modal');
+            closeWithAnim(modal, 'radar-popup', () => {
+                // Cleanup
+                if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                const popup = document.getElementById('radar-popup');
+                const t = popup.querySelector('#trend-chart-container');
+                if(t) t.remove();
+                if(chart) { chart.destroy(); chart=null; } // Ensure chart destroyed
+            });
+        }
+        
+        // Ensure close button works reliably by direct attachment if needed, though renderRadar attaches it too.
+        // But for safety, let's attach to the static element if it wasn't replaced?
+        // Actually #radar-close is static in HTML.
+        document.getElementById('radar-close').addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeRadarModal();
+        });
+        
+        // Listener for modal BG click
+        document.getElementById('radar-modal').onclick = (e) => {
+             if (e.target.id === 'radar-modal') closeRadarModal();
+        };
+
+        function alignGradesToSubjects(student, sourceSubjects, targetSubjects) {
+            // Map grades from source order to target order
+            return targetSubjects.map(ts => {
+                const idx = sourceSubjects.indexOf(ts);
+                if (idx === -1) return null;
+                const v = student.grades[idx];
+                return isNaN(v) ? null : v;
+            });
+        }
+
+        function updateRadarStats(student, dataset) {
+             const grades = student.grades;
+             const below = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).length;
+             const deficit = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+             const ratio = below > 0 ? (deficit / below) : NaN;
+             const vals = grades.filter(v => !isNaN(v));
+             const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : NaN;
+             const classOverall = dataset.overallAvg;
+
+             const sb = document.getElementById('stat-below');
+             const sd = document.getElementById('stat-deficit');
+             const sr = document.getElementById('stat-ratio');
+             const ss = document.getElementById('stat-score');
+
+             if(sb) sb.textContent = below;
+             if(sd) sd.textContent = deficit.toFixed(2);
+             if(sr) sr.textContent = isNaN(ratio) ? '-' : ratio.toFixed(2);
+             
+             if(ss) {
+                 if (!isNaN(avg) && !isNaN(classOverall)) {
+                     const diff = avg - classOverall;
+                     const sign = diff > 0 ? '+' : '';
+                     const cls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'flat');
+                     const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '─');
+                     ss.innerHTML = `${sign}${diff.toFixed(2)} <span class="stat-arrow ${cls}">${arrow}</span>`;
+                 } else {
+                     ss.textContent = '-';
+                 }
+             }
+        }
+
+
         // Show a histogram in the same modal using the #chart canvas
         // `opts` may contain { subjAvg, subjStd, corr } for subject histograms
-        // or { overallAvg, overallStd } for the overall-students histogram
-        function showHistogram(title, values, opts) {
-            const modal = document.getElementById('radar-modal');
-            const titleEl = document.getElementById('radar-title');
-            const statsPanel = document.getElementById('radar-stats');
-            const hc = document.getElementById('histogram-controls');
+        // `subjectName` is passed only for subject-specific histograms
+        let histChart = null;
+        let histTrendChart = null;
+
+        function showHistogram(title, values, opts, subjectName) {
+            const modal = document.getElementById('histogram-modal');
+            const titleEl = document.getElementById('histogram-title');
             const slider = document.getElementById('hist-bin-width');
             const sliderLabel = document.getElementById('hist-bin-label');
-            titleEl.textContent = title;
-            // hide radar stats panel for histograms
-            if (statsPanel) statsPanel.style.display = 'none';
-            if (hc) { hc.style.display = 'flex'; }
-            if (sliderLabel && slider) sliderLabel.textContent = slider.value;
-            // populate the dedicated histogram-stats block (if opts provided)
+            const popup = document.getElementById('histogram-popup');
+            const canvas = document.getElementById('histogram-chart');
             const histStatsEl = document.getElementById('hist-stats');
+
+            titleEl.textContent = title;
+            if (sliderLabel && slider) sliderLabel.textContent = slider.value;
+
+            // Remove old trend chart if any (it might be inserted by previous calls)
+            const oldTrend = popup.querySelector('#trend-chart-container');
+            if (oldTrend) oldTrend.remove();
+
+            // Populate generic stats
             if (histStatsEl) {
                 if (opts && (typeof opts.subjAvg !== 'undefined' || typeof opts.overallAvg !== 'undefined')) {
                     // build content depending on opts
@@ -993,25 +1790,119 @@
                     histStatsEl.innerHTML = '';
                 }
             }
-            modal.classList.add('active');
-            document.getElementById('main-content').classList.add('blur');
-            // recreate canvas to ensure a fresh element for Chart.js
-            const popup = document.getElementById('radar-popup');
-            const oldCanvas = popup.querySelector('#chart');
-            if (oldCanvas) oldCanvas.remove();
-            const newCanvas = document.createElement('canvas'); newCanvas.id = 'chart';
-            popup.appendChild(newCanvas);
-            // Move the histogram slider controls to the bottom of the popup so it appears under the chart
-            if (hc) popup.appendChild(hc);
-            const ctx = newCanvas.getContext('2d');
-            if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
-            // Prepare a render function that bins values according to a variable bin width
+            
+            // IF Subject: Show Trend Plot & Dataset Selector
+            let currentValues = values; // holds the data to bin
+            
+            if (subjectName) {
+                // 1. Create Container for Trend + Selector
+                const trendCont = document.createElement('div');
+                trendCont.id = 'trend-chart-container';
+                trendCont.style.marginBottom = '6px';
+                trendCont.style.height = '60px'; // Forced height container
+                trendCont.style.display = 'flex';
+                trendCont.style.flexDirection = 'column';
+                
+                // Selector
+                const selDiv = document.createElement('div');
+                selDiv.style.marginBottom = '4px';
+                selDiv.innerHTML = '<label for="hist-dataset-sel" style="font-size:0.8rem;color:#556;">Confronto:</label> ';
+                const sel = document.createElement('select');
+                sel.id = 'hist-dataset-sel';
+                sel.style.cssText = 'padding:4px; border-radius:6px; border:1px solid #ccc; font-size:0.85rem;';
+                
+                // Populate selector
+                const validDatasets = GLOBAL_datasets.filter(ds => ds.subjects.includes(subjectName))
+                                                     .sort((a,b) => b.dateObj - a.dateObj); 
+                
+                validDatasets.forEach(ds => {
+                    const opt = document.createElement('option');
+                    opt.value = ds.id;
+                    const dStr = ds.dateObj.toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
+                    opt.textContent = `${ds.name} (${dStr})`;
+                    if (ds.id === GLOBAL_activeDatasetId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+                
+                sel.onchange = (e) => {
+                    // Update Histogram Data
+                    const newDs = GLOBAL_datasets.find(d => d.id === e.target.value);
+                    if (newDs) {
+                         const subjIdx = newDs.subjects.indexOf(subjectName);
+                         if (subjIdx !== -1) {
+                             const newVals = newDs.students.map(s => s.grades[subjIdx]).filter(v => typeof v === 'number' && !isNaN(v));
+                             currentValues = newVals;
+                             const bw = slider ? parseFloat(slider.value) : 1;
+                             renderBins(bw);
+                         }
+                    }
+                };
+                
+                selDiv.appendChild(sel);
+                trendCont.appendChild(selDiv);
+
+                // Trend Canvas
+                let tCanvas = document.createElement('canvas'); // Create new
+                tCanvas.id = 'trend-chart';
+                tCanvas.style.height = '100%'; 
+                tCanvas.style.width = '100%';
+                trendCont.appendChild(tCanvas);
+                
+                // Insert after title
+                titleEl.after(trendCont);
+                
+                // Draw Trend Chart
+                const chronoDatasets = validDatasets.slice().sort((a,b) => a.dateObj - b.dateObj);
+                const labels = chronoDatasets.map(ds => ds.dateObj.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }));
+                const avgs = chronoDatasets.map(ds => {
+                    const idx = ds.subjects.indexOf(subjectName);
+                    return ds.classAvg[idx];
+                });
+                
+                const ctxT = tCanvas.getContext('2d');
+                if(histTrendChart) { try { histTrendChart.destroy(); } catch(e){} histTrendChart=null; }
+                
+                histTrendChart = new Chart(ctxT, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Media Classe',
+                            data: avgs,
+                            borderColor: '#e67e22',
+                            backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } },
+                        scales: { y: { display: true, min: 0, max: 10, ticks: { display: false } }, x: { ticks: { display: false } } }, 
+                        layout: { padding: 0 }
+                    }
+                });
+            }
+
+            modal.style.display = 'flex';
+            // slight delay to allow display flex to apply before adding class (for potential transition if changed)
+            requestAnimationFrame(() => {
+                modal.classList.add('active');
+                document.getElementById('main-content').classList.add('blur');
+            });
+
+            const ctx = canvas.getContext('2d');
+            if (histChart) { try { histChart.destroy(); } catch(e){} histChart = null; }
+            
+            // Render function
             function renderBins(binWidth) {
                 binWidth = parseFloat(binWidth) || 1;
                 const nBins = Math.max(1, Math.ceil(10 / binWidth));
                 const bins = new Array(nBins).fill(0);
-                for (let v of values) {
-                    if (isNaN(v)) continue;
+                for (let v of currentValues) {
+                    if (typeof v !== 'number' || isNaN(v)) continue;
                     let idx = Math.floor(v / binWidth);
                     if (idx < 0) idx = 0;
                     if (idx >= nBins) idx = nBins - 1;
@@ -1022,7 +1913,6 @@
                     const lower = (i * binWidth);
                     const upper = Math.min(10, (i + 1) * binWidth);
                         const center = (lower + upper) / 2;
-                        // display whole grade only when bin width is exactly 1; otherwise show interval string
                         const fmt = n => (Math.abs(n - Math.round(n)) < 1e-9 ? String(Math.round(n)) : n.toFixed(2));
                         if (Math.abs(binWidth - 1) < 1e-9) {
                             labels.push(String(Math.round(center)));
@@ -1030,26 +1920,28 @@
                             labels.push(`${fmt(lower)}-${fmt(upper)}`);
                         }
                 }
-                if (!chart) {
-                    chart = new Chart(ctx, {
+                if (!histChart) {
+                    histChart = new Chart(ctx, {
                         type: 'bar',
                         data: { labels, datasets: [{ label: 'Conteggio', data: bins, backgroundColor: 'rgba(25,118,210,0.6)' }] },
                         options: {
                             plugins: { legend: { display: false } },
+                             responsive: true,
+                             maintainAspectRatio: false,
                             scales: { x: { ticks: { color: '#222' } }, y: { beginAtZero: true, ticks: { color: '#222' } } }
                         }
                     });
                 } else {
-                    chart.data.labels = labels;
-                    chart.data.datasets[0].data = bins;
-                    chart.update();
+                    histChart.data.labels = labels;
+                    histChart.data.datasets[0].data = bins;
+                    histChart.update();
                 }
             }
 
-            // initial render using slider value (if present) or 1
+            // initial render
             const initialBin = slider ? parseFloat(slider.value) : 1;
             renderBins(initialBin);
-            // wire slider to update bins (override previous handler)
+            
             if (slider) {
                 slider.oninput = () => {
                     const bw = parseFloat(slider.value);
@@ -1057,31 +1949,240 @@
                     renderBins(bw);
                 };
             }
-            // Close logic: animate closing, then cleanup
-            document.getElementById('radar-close').onclick = () => {
-                closeWithAnim(modal, 'radar-popup', () => {
-                    if (statsPanel) statsPanel.style.display = '';
-                    if (hc) hc.style.display = 'none';
-                    if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
-                });
+            
+            // Close logic
+            const closeBtn = document.getElementById('histogram-close');
+            const closeHistogram = () => {
+                 closeWithAnim(modal, 'histogram-popup', () => {
+                     modal.style.display = 'none';
+                     if (histChart) { histChart.destroy(); histChart=null; }
+                     if (histTrendChart) { histTrendChart.destroy(); histTrendChart=null; }
+                     const t = popup.querySelector('#trend-chart-container');
+                     if(t) t.remove();
+                 });
             };
-            modal.onclick = e => {
-                if (e.target === modal) {
-                    closeWithAnim(modal, 'radar-popup', () => {
-                        if (statsPanel) statsPanel.style.display = '';
-                        if (hc) hc.style.display = 'none';
-                        if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
-                    });
-                }
+            
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeHistogram();
+            };
+            modal.onclick = (e) => {
+                 if (e.target.id === 'histogram-modal') closeHistogram();
             };
         }
         
+
+        
+
+        // --- Combined Radar View ---
+        let combinedChart = null;
+        
+        document.getElementById('open-combined-radar').addEventListener('click', () => {
+             const ds = getActiveDataset();
+             if(!ds) return;
+             
+             const modal = document.getElementById('combined-radar-modal');
+             const canvas = document.getElementById('combined-radar-chart');
+             const closeBtn = document.getElementById('combined-radar-close');
+             const select = document.getElementById('combined-radar-select');
+             
+             modal.style.display = 'flex';
+             modal.classList.add('active'); 
+             document.getElementById('main-content').classList.add('blur');
+             
+             closeBtn.onclick = () => {
+                 closeWithAnim(modal, 'combined-radar-popup', () => {
+                     modal.style.display = 'none';
+                     if(combinedChart) { combinedChart.destroy(); combinedChart=null; }
+                 });
+             };
+             modal.onclick = (e) => { if (e.target === modal) closeBtn.click(); };
+             
+             // Populate Select
+             select.innerHTML = '<option value="">Vista d\'insieme (Tutti)</option>';
+             ds.students.forEach(s => {
+                 const opt = document.createElement('option');
+                 opt.value = s.name;
+                 opt.textContent = s.name;
+                 select.appendChild(opt);
+             });
+             
+             // Data Prep
+             const subjects = ds.subjects;
+             
+             // Pre-calculate point overlaps (stacking)
+             // Map key: `${subjectIndex}_${gradeValue}` -> count
+             const stackCounts = {};
+             ds.students.forEach(s => {
+                 s.grades.forEach((g, i) => {
+                     if(g !== null && !isNaN(g)) {
+                         const key = `${i}_${g}`;
+                         stackCounts[key] = (stackCounts[key] || 0) + 1;
+                     }
+                 });
+             });
+
+             // Create datasets for all
+             // Default: faint opacity
+             const datasets = ds.students.map((s, i) => {
+                 const ptColors = s.grades.map(g => (g>=6 ? '#1ec01e' : '#d21919'));
+                 return {
+                     label: s.name,
+                     data: s.grades.map(g => isNaN(g) ? null : g),
+                     borderColor: 'rgba(25, 118, 210, 0.15)',
+                     backgroundColor: 'transparent',
+                     pointBackgroundColor: ptColors,
+                     // Dynamic point radius based on stack count
+                     pointRadius: (ctx) => {
+                        const val = ctx.raw;
+                        const idx = ctx.dataIndex;
+                        if(val === null || isNaN(val)) return 0;
+                        const count = stackCounts[`${idx}_${val}`] || 1;
+                        // Base 3, add 1.5 per extra person? Max cap 10?
+                        const r = 3 + (count - 1) * 1.5;
+                        return Math.min(r, 12);
+                     },
+                     pointHoverRadius: 6,
+                     borderWidth: 1,
+                     order: 1 // Default order
+                 };
+             });
+             
+             // Add Limit-6 line on top
+             datasets.push({
+                 label: 'Sufficienza',
+                 data: new Array(subjects.length).fill(6),
+                 borderColor: 'rgba(50,50,50,0.5)',
+                 borderWidth: 1,
+                 borderDash: [5,5],
+                 pointRadius: 0,
+                 order: 0 // Top
+             });
+
+             const ctx = canvas.getContext('2d');
+             if(combinedChart) combinedChart.destroy();
+             
+             // Plugin to show values on Combined Radar (only if highlighted)
+             const combinedValPlugin = {
+                id: 'combinedValPlugin',
+                afterDatasetsDraw(chart) {
+                    const ctx = chart.ctx;
+                    // Find if any dataset is highlighted (borderWidth 3 or order 0)
+                    // We rely on order 0 being the "on top" selected one.
+                    chart.data.datasets.forEach(ds => {
+                        if (ds.order === 0 && ds.label !== 'Sufficienza') {
+                             const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(ds));
+                             const rScale = chart.scales.r;
+                             const xCenter = rScale.xCenter;
+                             const yCenter = rScale.yCenter;
+                             
+                             meta.data.forEach((element, index) => {
+                                 const val = ds.data[index];
+                                 if (val !== null && !isNaN(val)) {
+                                     // Position: slightly towards center? or outside?
+                                     // Let's do similar to main radar: slight offset towards center
+                                     const ex = element.x;
+                                     const ey = element.y;
+                                     const dx = xCenter - ex;
+                                     const dy = yCenter - ey;
+                                     const dist = Math.sqrt(dx*dx + dy*dy);
+                                     
+                                     // Offset 15px towards center
+                                     const offset = 18;
+                                     const u = dx / dist; 
+                                     const v = dy / dist;
+                                     const tx = ex + u*offset;
+                                     const ty = ey + v*offset;
+                                     
+                                     ctx.fillStyle = '#000';
+                                     ctx.font = 'bold 11px Inter';
+                                     ctx.textAlign = 'center';
+                                     ctx.textBaseline = 'middle';
+                                     // minimal outline for contrast against lines
+                                     ctx.strokeStyle = '#fff';
+                                     ctx.lineWidth = 2;
+                                     ctx.strokeText(val, tx, ty);
+                                     ctx.fillText(val, tx, ty);
+                                 }
+                             });
+                        }
+                    });
+                }
+             };
+
+             combinedChart = new Chart(ctx, {
+                 type: 'radar',
+                 data: {
+                     labels: subjects,
+                     datasets: datasets
+                 },
+                 plugins: [combinedValPlugin],
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     plugins: {
+                         legend: { display: false },
+                         tooltip: { 
+                             mode: 'nearest', 
+                             intersect: true,
+                             callbacks: { title: (i) => i[0].dataset.label }
+                        }
+                     },
+                     scales: {
+                        r: {
+                            min: 0, max: 10,
+                            // Enable tick display
+                            ticks: { display: true, stepSize: 2, backdropColor:'transparent', color:'#666', font:{size:10} },
+                            grid: { color: (c) => (c.tick.value === 6 ? '#aaa' : '#eee'), lineWidth: (c) => (c.tick.value === 6 ? 2 : 1) },
+                            pointLabels: { font: { size: 12, weight: 'bold' } }
+                        }
+                    }
+                 }
+             });
+             
+             // Handle Selection
+             select.onchange = () => {
+                 const selName = select.value;
+                 
+                 combinedChart.data.datasets.forEach(d => {
+                     // Reset default style
+                     // Skip Sufficiency line (no ptColors)
+                     if (!d.pointBackgroundColor) return; 
+                     
+                     if (selName === "") {
+                         // Everyone visible but faint
+                         d.borderColor = 'rgba(25, 118, 210, 0.15)';
+                         d.borderWidth = 1;
+                         d.order = 1;
+                         d.pointRadius = 3;
+                     } else {
+                         if (d.label === selName) {
+                             // Highlight
+                             d.borderColor = 'rgba(25, 118, 210, 1)';
+                             d.borderWidth = 3;
+                             d.order = 0; // Bring to front
+                             d.pointRadius = 5;
+                         } else {
+                             // Fade
+                             d.borderColor = 'rgba(200, 200, 200, 0.05)';
+                             d.borderWidth = 1;
+                             d.pointRadius = 2; // shrink dots
+                         }
+                     }
+                 });
+                 combinedChart.update();
+             };
+        });
+
         // Generate a human-readable Italian report and show it in a modal
         function generateReport() {
-            const students = window.GLOBAL_students || [];
-            const subjects = window.GLOBAL_subjects || [];
-            const classAvg = window.GLOBAL_classAvg || [];
-            const overallAvg = window.GLOBAL_overallAvg;
+            const dataset = getActiveDataset();
+            if (!dataset) return;
+            
+            const students = dataset.students || [];
+            const subjects = dataset.subjects || [];
+            const classAvg = dataset.classAvg || [];
+            const overallAvg = dataset.overallAvg;
             const today = new Date().toLocaleDateString('it-IT');
 
             function mean(arr){ if(!arr || arr.length===0) return NaN; return arr.reduce((a,b)=>a+b,0)/arr.length; }
@@ -1212,11 +2313,12 @@
             }
 
             // close handlers (animated)
+            // close handlers (animated)
             document.getElementById('report-close').onclick = () => {
                 closeWithAnim(modal, 'report-popup');
             };
             modal.onclick = e => { if (e.target === modal) { closeWithAnim(modal, 'report-popup'); } };
-        }
+        } // Close generateReport
 
         // wire generate report button after DOM ready
         document.addEventListener('click', function(ev){
