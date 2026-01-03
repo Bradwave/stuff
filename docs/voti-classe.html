@@ -6,350 +6,452 @@
     <title>Class Grades</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <!-- Inline favicon (data URL) to avoid creating new files; rounded corners -->
-    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' ry='18' fill='%231976d2' width='100' height='100'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='Arial' fill='white'>V</text></svg>">
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='12' ry='12' fill='%232b3b4a' width='100' height='100'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='monospace' fill='white'>V</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* --- Fonts --- */
+        @font-face {
+            font-family: 'Azeret Mono';
+            src: url('../assets/fonts/AzeretMono-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 900;
+            font-display: swap;
+        }
+
+        :root {
+            /* Theme Config */
+            --font-main: 'Azeret Mono', monospace;
+            --bg-body: #f7f9fc;
+            --bg-card: #ffffff;
+            --col-text: #1a1b1e;
+            --col-text-muted: #6b7280;
+            --col-border: #e2e4e9;
+            --col-primary: #2563eb;
+            --col-primary-hover: #1d4ed8;
+            --col-danger: #dc2626;
+            --col-success: #16a34a;
+            
+            /* Shadows & Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
         * {
             box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
         }
 
         body {
-            background: linear-gradient(135deg, #f4f6fa 0%, #eef1f6 100%);
-            color: #1a1a1a;
-            font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+            background: var(--bg-body);
+            color: var(--col-text);
+            font-family: var(--font-main);
             margin: 0;
             padding: 24px;
-            font-size: 15px;
+            font-size: 13px; /* Reduced base size */
+            line-height: 1.5;
         }
 
-        h1 {
-            margin: 0 0 16px 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #1f3b5c;
+        h1, h2, h3 {
+            margin: 0;
+            color: var(--col-text);
+            font-weight: 700;
             letter-spacing: -0.02em;
         }
 
-        /* --- Smooth blur when modal opens --- */
-        #main-content.blur {
-            filter: blur(5px) brightness(0.92);
-            transition: filter 0.25s ease;
-        }
+        h1 { font-size: 1.5rem; margin-bottom: 20px; }
+        h2 { font-size: 1.25rem; }
+        h3 { font-size: 1.1rem; }
 
-        /* --- Table Container --- */
+        button { font-family: inherit; }
+
+        /* --- Layout Utilities --- */
+        .flex { display: flex; }
+        .flex-col { display: flex; flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .gap-4 { gap: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .text-sm { font-size: 12px; }
+        .text-muted { color: var(--col-text-muted); }
+
+        /* --- Table Styling --- */
         .table-wrapper {
             width: 100%;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: 20px;
-            background: #ffffffcc;
-            backdrop-filter: blur(8px);
-            border-radius: 14px;
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
-            transition: 0.2s ease;
+            background: var(--bg-card);
+            border: 1px solid var(--col-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
         }
 
         table {
             width: 100%;
-            /* min-width to ensure scroll on mobile */
             min-width: 800px;
-            table-layout: fixed;
-            border-collapse: separate;
-            border-spacing: 0;
-            background: transparent;
+            border-collapse: collapse; /* Cleaner borders */
+            font-variant-numeric: tabular-nums;
         }
 
-        th,
-        td {
-            padding: 10px 12px;
+        th, td {
+            padding: 8px 12px;
             text-align: center;
-            border-bottom: 1px solid #e8e8ef;
-            font-size: 0.95rem;
+            border-bottom: 1px solid var(--col-border);
+            border-right: 1px solid #f3f4f6; /* Subtle vertical separators */
         }
+        td:last-child, th:last-child { border-right: none; }
 
         th {
-            background: #f5f6fb;
+            background: #f8fafc;
             font-weight: 600;
-            color: #3b3b55;
+            color: var(--col-text-muted);
             text-transform: uppercase;
-            font-size: 0.78rem;
-            letter-spacing: 0.03em;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
-        th.sortable { cursor: pointer; position: relative; }
-        th.sorted-asc::after { content: " ▲"; font-size: 0.78rem; color: #666; }
-        th.sorted-desc::after { content: " ▼"; font-size: 0.78rem; color: #666; }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover {
-            background: #f2f7ff;
-            cursor: pointer;
-        }
-
-        tr.selected {
-            background: #e3edff !important;
-            box-shadow: inset 0 0 0 2px #4a90e24d;
-        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f1f5f9; cursor: pointer; }
+        tr.selected td { background: #e0f2fe !important; }
 
         .name-cell {
             text-align: left;
             font-weight: 600;
-            color: #2e3550;
-        }
-
-        .avg {
-            font-size: 0.9em;
-            margin-left: 6px;
-            font-weight: 700;
-            opacity: 0.85;
-        }
-
-        .avg.green {
-            color: #1e7a1e;
-        }
-
-        .avg.red {
-            color: #d21919;
+            color: #111827;
         }
 
         .num-col {
-            color: #4a90e2;
-            opacity: 0.8;
-            color: #4a90e2;
-            opacity: 0.8;
-            font-size: 0.85em;
+            color: var(--col-text-muted);
+            font-size: 11px;
+        }
+
+        /* --- Grade Badges --- */
+        .grade-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         
-        .grade.missing { color: #ccc; font-style:italic; background: #f7f7f7; }
-
         .grade {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 22px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 12px;
+            border: 1px solid transparent; /* Prepared for colored borders */
+        }
+        
+        .grade.missing {
+            background: #f3f4f6;
+            color: #9ca3af;
+            font-style: italic;
+            border: 1px dashed #d1d5db;
+        }
+
+        .avg {
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .avg.green { color: var(--col-success); background: #dcfce7; }
+        .avg.red { color: var(--col-danger); background: #fee2e2; }
+
+        /* --- Buttons & Inputs --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid var(--col-border);
+            background: white;
+            color: var(--col-text);
+        }
+        
+        .btn:hover { background: #f9fafb; border-color: #d1d5db; }
+        
+        .btn-primary {
+            background: var(--col-text); /* Black/Dark styling for technical feel */
+            color: white;
+            border-color: var(--col-text);
+        }
+        .btn-primary:hover {
+            background: #333;
+            border-color: #333;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: none;
+            color: var(--col-text-muted);
+        }
+        .btn-ghost:hover {
+            background: #f3f4f6;
+            color: var(--col-text);
+        }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--col-border);
+            box-shadow: var(--shadow-md);
+            width: min(90vw, 800px);
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.98);
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 24px 24px 40px 24px;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        .modal-close {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            background: transparent;
+            border: none;
+            color: var(--col-text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close:hover { background: #f3f4f6; color: var(--col-text); }
+
+        /* --- Analysis Specifics (Radar/Hist) --- */
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            position: relative;
+            margin-top: 16px;
+        }
+
+        .stat-panel {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            background: #f8fafc;
+            border: 1px solid var(--col-border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            text-align: left;
+            min-width: 100px;
+        }
+        
+        .stat-label { display: block; font-size: 10px; color: var(--col-text-muted); text-transform: uppercase; margin-bottom: 2px;}
+        .stat-val { font-size: 14px; font-weight: 700; color: var(--col-text); }
+
+        /* --- Dataset Manager --- */
+        .ds-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid var(--col-border);
+            border-radius: var(--radius-md);
+            margin-bottom: 8px;
+        }
+        .ds-item:last-child { margin-bottom: 0; }
+        
+        .input-base {
+            padding: 6px 10px;
+            border: 1px solid var(--col-border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: inherit;
+            background: #fff;
+            color: var(--col-text);
+        }
+        .input-base:focus { outline: 2px solid var(--col-primary); border-color: transparent; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            background: #fff;
+            color: var(--col-text);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            font-family: 'Azeret Mono', monospace;
+        }
+        .btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+        
+        .btn-primary {
+            background: var(--col-primary);
+            color: #fff;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+
+        .btn-ghost {
+            background: transparent;
+            box-shadow: none;
+            color: var(--col-text-muted);
+        }
+        .btn-ghost:hover { background: #f1f5f9; color: var(--col-text); }
+        
+        .btn-icon-danger {
+            background: transparent;
+            color: #ef4444;
+            border: 1px solid transparent;
+            width: 28px; height: 28px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: all 0.2s;
+        }
+        .btn-icon-danger:hover { background: #fee2e2; border-color: #fca5a5; }
+
+        /* Stat Box (Table Summary) */
+        .stat-box {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 36px;
             height: 24px;
-            border-radius: 6px;
-            padding: 0 4px;
+            border-radius: 4px;
             font-weight: 600;
-            font-size: 14px;
-            box-sizing: border-box;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            font-size: 11.5px;
+            color: var(--col-text);
         }
-        .grade.missing { color: #ccc; font-style:italic; background: #f7f7f7 !important; }
-        .grade-arrow { font-weight:bold; }
-        /* small wrapper and arrow indicator next to each grade */
-        .grade-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px; /* reduced gap */
-            justify-content: center;
+        
+        /* Stats Panel (Popups) */
+        #radar-stats, #hist-stats {
+            display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;
         }
-        .grade-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            flex-shrink: 0;
+        .radar-stat {
+            display: flex; flex-direction: column; align-items: center;
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            padding: 8px 12px; border-radius: 8px;
+            min-width: 80px;
+            margin-top: 20px;
         }
-        .grade-dot.green { background-color: #1ec01e; }
-        .grade-dot.red { background-color: #d21919; }
-        .grade-dot.neutral { background-color: #ccc; }
-        .grade-arrow {
-            display: inline-block;
-            width: 12px;
-            text-align: center;
-            font-size: 11px;
-            line-height: 1;
-            color: #6b7280;
-            user-select: none;
-        }
-        .grade-arrow.up { color: #1e7a1e; }
-        .grade-arrow.down { color: #d21919; }
-        .grade-arrow.flat { color: #7a7a7a; }
+        .radar-stat .label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .radar-stat .value { font-size: 15px; font-weight: 700; color: #0f172a; }
 
-        /* Right-hand summary columns */
-        .sep-col {
-            border-left: 3px solid rgba(0, 0, 0, 0.06);
-            background: #fafbff;
+        /* Trend Container */
+        .trend-container {
+            margin-bottom: 12px;
+            height: 80px; /* Fixed height! */
+            width: 100%;
+            position: relative;
+        }
+        .trend-select {
+            position: absolute;
+            top: 0; right: 0;
+            z-index: 10;
+            padding: 2px 6px;
+            font-size: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(4px);
         }
 
         /* Yellow shading system preserved */
-        .yellow-shade-1 {
-            background: #fffce6;
+        .yellow-shade-1 { background: #fffce6; }
+        .yellow-shade-2 { background: #fff6b3; }
+        .yellow-shade-3 { background: #ffea80; }
+        .yellow-shade-4 { background: #ffd74d; }
+        .yellow-shade-5 { background: #ffc700; }
+
+        /* --- Blur Effect for Main Content --- */
+        #main-content { transition: filter 0.2s ease; }
+        #main-content.blur { filter: blur(4px); }
+
+        /* Report Styles */
+        .report-section { margin-top: 12px; }
+        .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .report-header strong { color: var(--col-text-header); font-size: 0.9rem; }
+        .report-pre { 
+            white-space: pre-wrap; 
+            margin: 0; 
+            font-family: 'Azeret Mono', monospace; 
+            font-size: 11px; 
+            background: #f1f5f9; 
+            padding: 12px; 
+            border-radius: var(--radius-sm); 
+            border: 1px solid var(--col-border);
+            color: var(--col-text);
         }
 
-        .yellow-shade-2 {
-            background: #fff6b3;
-        }
-
-        .yellow-shade-3 {
-            background: #ffea80;
-        }
-
-        .yellow-shade-4 {
-            background: #ffd74d;
-        }
-
-        .yellow-shade-5 {
-            background: #ffc700;
-        }
-
-        /* --- Modal Modernized --- */
-        #radar-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            background: rgba(20, 28, 40, 0.22);
-            backdrop-filter: blur(10px);
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        #radar-modal.active {
+        /* Legend Styles */
+        .legend-container {
             display: flex;
-        }
-
-        #radar-popup {
-            background: #fff;
-            border-radius: 20px;
-            padding: 28px 32px 20px;
-            width: min(92vw, 760px);
-            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.16);
-            animation: modalIn 240ms cubic-bezier(.15, .85, .25, 1);
-            transition: opacity 220ms ease, transform 220ms ease;
-            position: relative;
-            text-align: center;
-            /* Fix for infinite height / overflow */
-            max-height: 90vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #radar-title {
-            margin: 0;
-            font-size: 1.35rem;
-            font-weight: 600;
-            color: #1f3b5c;
-            margin-bottom: 14px;
-        }
-
-        #radar-close {
-            position: absolute;
-            right: 16px;
-            top: 12px;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            color: #4a90e2;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        #radar-close:hover {
-            color: #1f3b5c;
-            transform: scale(1.12);
-        }
-
-        @keyframes modalIn {
-            from {
-                opacity: 0;
-                transform: translateY(12px) scale(0.97);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 520px;
-            position: relative;
-            flex-shrink: 0; /* prevent squashing */
-        }
-        /* Ensure canvas inside fills container */
-        .chart-container canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-        /* Radar stats panel inside modal */
-        #radar-stats {
-            display: flex;
+            flex-wrap: wrap;
             gap: 12px;
             justify-content: center;
-            margin-bottom: 12px;
-            font-size: 0.95rem;
-            color: #2b3b4a;
+            margin-bottom: 20px;
+            margin-top: 10px;
+            font-size: 12px;
         }
-        .radar-stat {
-            background: #f6f9ff;
-            padding: 8px 12px;
-            border-radius: 10px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            min-width: 120px;
-            text-align: left;
-        }
-        .radar-stat .label { display:block; font-size:0.78rem; color:#556; }
-        .radar-stat .value { font-weight:700; font-size:1.05rem; margin-top:4px; }
-        /* small arrow inside stats for score indicator */
-        .stat-arrow { margin-left:8px; font-size:11px; vertical-align:middle; }
-        .stat-arrow.up { color: #1e7a1e; }
-        .stat-arrow.down { color: #d21919; }
-        .stat-arrow.flat { color: #7a7a7a; }
-        /* Report button */
-        .btn-report {
-            background: #2b7fd9;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-weight: 700;
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             cursor: pointer;
-            box-shadow: 0 6px 16px rgba(43,127,217,0.12);
-            transition: background-color 160ms ease, box-shadow 160ms ease;
+            transition: opacity 0.2s;
         }
-        .btn-report:hover { background-color: #5b9ff0; box-shadow: 0 10px 24px rgba(43,127,217,0.14); }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
 
-        /* Report modal */
-        #report-modal { display:none; position: fixed; inset:0; z-index:1200; background: rgba(20,28,40,0.22); backdrop-filter: blur(10px); align-items:center; justify-content:center; padding:20px; }
-        #report-modal.active { display:flex; }
-        #report-popup { background:#fff; border-radius:16px; padding:20px 20px 16px; width:min(92vw,760px); box-shadow:0 14px 48px rgba(0,0,0,0.16); max-height:86vh; overflow:hidden; }
-        #report-title { margin:0 0 8px 0; font-size:1.2rem; color:#1f3b5c; }
-        #report-body { font-size:0.95rem; color:#222; white-space:pre-wrap; max-height: calc(86vh - 120px); overflow:auto; border-radius:10px; background: #ffffff; padding: 12px; }
-        #report-body > div { padding-bottom:10px; margin-bottom:12px; border-bottom:1px solid #f0f2f5; }
-        #report-body > div:last-child { border-bottom: none; margin-bottom:0; padding-bottom:0; }
-        /* modern scrollbar styling */
-        #report-body::-webkit-scrollbar { width: 8px; }
-        #report-body::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
-        #report-body::-webkit-scrollbar-thumb { background: #d0d8e0; border-radius: 10px; transition: background 200ms ease; }
-        #report-body::-webkit-scrollbar-thumb:hover { background: #a8b3bf; }
-        #report-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-        .btn-plain { background: #eef4ff; border: none; padding:8px 10px; border-radius:8px; cursor:pointer; }
-        /* per-section copy buttons: icon-only, smaller */
-        .sec-copy { background: none; border: none; color: #4a90e2; cursor: pointer; font-size: 0.85rem; padding: 4px 6px; border-radius: 4px; transition: background-color 140ms ease, color 140ms ease; font-weight: 600; }
-        .sec-copy:hover { background-color: #dbeafe; color: #1976d2; }
-        /* Histogram controls inside modal (hidden for radar) */
-        #histogram-controls { display: none; justify-content: center; gap: 12px; margin-top: 16px; margin-bottom: 8px; align-items:center }
-        #histogram-controls label { font-size: 0.9rem; color: #556; margin-right: 6px; }
-        #histogram-controls input[type="range"] { vertical-align: middle; width:220px; appearance: none; -webkit-appearance: none; -moz-appearance: none; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#dbeafe,#bfdbfe); outline: none; }
-        #histogram-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width:18px; height:18px; border-radius:50%; background:#1976d2; box-shadow:0 2px 6px rgba(25,118,210,0.35); border: 2px solid white; }
-        #histogram-controls input[type="range"]::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#1976d2; box-shadow:0 2px 6px rgba(25,118,210,0.35); border: 2px solid white; }
-        #histogram-controls #hist-bin-label { font-weight:700; color:#2b3b4a; margin-left:6px; }
-        /* closing state for popups */
-        #radar-popup.closing, #report-popup.closing { opacity: 0; transform: translateY(8px); }
-        /* blur fade during close - synchronized with popup animation */
-        #main-content.blur.closing { filter: blur(0px) brightness(1); transition: filter 220ms ease; }
     </style>
-    <div id="radar-modal">
-        <div id="radar-popup">
-            <button id="radar-close" title="Chiudi">&times;</button>
+    <!-- Radar Modal -->
+    <div id="radar-modal" class="modal-overlay" aria-hidden="true">
+        <div id="radar-popup" class="modal-content">
+            <button id="radar-close" class="modal-close" title="Chiudi">&times;</button>
             <h2 id="radar-title"></h2>
             <div id="radar-stats" aria-hidden="true">
                 <div class="radar-stat"><span class="label">&lt;6</span><span class="value" id="stat-below">-</span></div>
@@ -363,56 +465,56 @@
         </div>
     </div>
 
-    <!-- Histogram Modal (Separated) -->
-    <div id="histogram-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,28,40,0.22);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:20px;">
-        <div id="histogram-popup" style="background:#fff;border-radius:20px;padding:28px 32px 20px;width:min(92vw,760px);box-shadow:0 14px 48px rgba(0,0,0,0.16);animation:modalIn 240ms cubic-bezier(.15,.85,.25,1);position:relative;text-align:center;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
-            <button id="histogram-close" title="Chiudi" style="position:absolute;right:16px;top:12px;background:none;border:none;font-size:2rem;color:#4a90e2;cursor:pointer;transition:0.2s;">&times;</button>
-            <h2 id="histogram-title" style="margin:0 0 14px 0;font-size:1.35rem;font-weight:600;color:#1f3b5c;"></h2>
+    <!-- Histogram Modal (Refactored) -->
+    <div id="histogram-modal" class="modal-overlay" aria-hidden="true">
+        <div id="histogram-popup" class="modal-content" style="width:min(92vw,760px);">
+            <button id="histogram-close" class="modal-close" title="Chiudi">&times;</button>
+            <h2 id="histogram-title" style="margin:0 0 14px 0;font-size:1.35rem;font-weight:600;color:var(--col-text-header);"></h2>
             
             <div id="histogram-controls" style="display:flex;justify-content:center;gap:12px;margin-top:16px;margin-bottom:8px;align-items:center;">
                 <label for="hist-bin-width">Granularità asse X:</label>
                 <input id="hist-bin-width" type="range" min="0.25" max="2" step="0.25" value="1">
-                <span id="hist-bin-label" style="font-weight:700;color:#2b3b4a;margin-left:6px;">1</span>
+                <span id="hist-bin-label" style="font-weight:700;color:var(--col-text);margin-left:6px;">1</span>
             </div>
-            <div id="hist-stats" style="display:none;justify-content:center;gap:12px;margin-bottom:10px;font-size:0.95rem;color:#2b3b4a"></div>
+            <div id="hist-stats" style="display:none;justify-content:center;gap:12px;margin-bottom:10px;font-size:0.95rem;color:var(--col-text)"></div>
             
             <div class="chart-container" style="height:320px;">
                 <canvas id="histogram-chart"></canvas>
             </div>
         </div>
     </div>
+
     <!-- Dataset Management Modal -->
-    <div id="dataset-modal" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(20,28,40,0.22); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
-        <div id="dataset-popup" style="background:#fff; border-radius:16px; padding:24px; width:min(92vw, 600px); box-shadow:0 14px 48px rgba(0,0,0,0.16); animation:modalIn 240ms cubic-bezier(.15,.85,.25,1); position:relative; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
-            <button id="dataset-close" title="Chiudi" style="position:absolute; right:16px; top:16px; background:none; border:none; font-size:1.8rem; color:#4a90e2; cursor:pointer;">&times;</button>
-            <h3 style="margin:0 0 16px 0; color:#1f3b5c; font-size:1.3rem;">Gestione Dataset</h3>
+    <div id="dataset-modal" class="modal-overlay" aria-hidden="true">
+        <div id="dataset-popup" class="modal-content" style="width:min(92vw, 600px);">
+            <button id="dataset-close" class="modal-close" title="Chiudi">&times;</button>
+            <h3 style="margin:0 0 16px 0; color:var(--col-text-header); font-size:1.3rem;">Gestione Dataset</h3>
             <div id="dataset-list" style="max-height:60vh; overflow-y:auto; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;">
                 <!-- List items will be injected here -->
             </div>
             <div style="border-top:1px solid #eee; padding-top:16px; display:flex; justify-content:space-between; align-items:center;">
-                <button id="modal-clear-all-btn" style="background:none; border:1px solid #fee; color:#d21919; padding:6px 12px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
+                <button id="modal-clear-all-btn" class="btn" style="border:1px solid #fee; color:#d21919;">
                     Elimina tutto
                 </button>
-                <button id="modal-add-csv-btn" class="btn-report" style="display:flex; align-items:center; gap:8px;">
+                <button id="modal-add-csv-btn" class="btn btn-primary" style="display:flex; align-items:center; gap:8px;">
                     <span style="font-size:18px; line-height:1;">+</span> Aggiungi CSV
                 </button>
             </div>
             <div style="border-top:1px solid #eee; padding-top:16px; margin-top:16px; display:flex; justify-content:flex-start;">
-                 <button id="modal-clear-storage-btn" style="background:#fee; border:1px solid #fcc; color:#c00; padding:8px 12px; border-radius:8px; font-size:0.85rem; cursor:pointer; font-weight:600;">
+                 <button id="modal-clear-storage-btn" class="btn" style="background:#fee; border:1px solid #fcc; color:#c00;">
                     Elimina Tutto e Pulisci Storage
                  </button>
-            </div>
             </div>
         </div>
     </div>
 
     <!-- Combined Radar Modal -->
-    <div id="combined-radar-modal" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(20,28,40,0.22); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
-        <div id="combined-radar-popup" style="background:#fff; border-radius:20px; padding:24px; width:min(95vw, 1000px); height:min(90vh, 800px); box-shadow:0 14px 48px rgba(0,0,0,0.16); animation:modalIn 240ms cubic-bezier(.15,.85,.25,1); position:relative; display:flex; flex-direction:column;">
-            <button id="combined-radar-close" title="Chiudi" style="position:absolute; right:16px; top:16px; background:none; border:none; font-size:1.8rem; color:#4a90e2; cursor:pointer; z-index:10;">&times;</button>
+    <div id="combined-radar-modal" class="modal-overlay" aria-hidden="true">
+        <div id="combined-radar-popup" class="modal-content" style="width:min(95vw, 1000px); height:min(90vh, 800px);">
+            <button id="combined-radar-close" class="modal-close" title="Chiudi">&times;</button>
             <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
-                <h3 style="margin:0; color:#1f3b5c; font-size:1.3rem;">Radar Classe</h3>
-                <select id="combined-radar-select" style="padding:6px; border-radius:6px; border:1px solid #ccc; font-family:'Inter',sans-serif; font-size:0.95rem; max-width:300px;">
+                <h3 style="margin:0; color:var(--col-text-header); font-size:1.3rem;">Radar Classe</h3>
+                <select id="combined-radar-select" class="input-base" style="max-width:300px;">
                     <option value="">Vista d'insieme (Tutti)</option>
                 </select>
             </div>
@@ -421,37 +523,38 @@
             </div>
         </div>
     </div>
+
     <!-- Report modal -->
-    <div id="report-modal" aria-hidden="true">
-        <div id="report-popup">
-            <button id="report-close" title="Chiudi" style="position:absolute;right:18px;top:12px;background:none;border:none;font-size:1.8rem;color:#4a90e2;cursor:pointer">&times;</button>
-            <h3 id="report-title">Report della classe</h3>
+    <div id="report-modal" class="modal-overlay" aria-hidden="true">
+        <div id="report-popup" class="modal-content" style="width:min(92vw, 800px);">
+            <button id="report-close" class="modal-close" title="Chiudi">&times;</button>
+            <h3 id="report-title" style="margin-top:0; color:var(--col-text-header);">Report della classe</h3>
             <div id="report-body" role="document">Caricamento report...</div>
-            <div id="report-actions">
-                <button id="copy-report" class="btn-plain">Copia report</button>
-                <button id="print-report" class="btn-plain">Stampa</button>
+            <div id="report-actions" style="margin-top:1rem; display:flex; gap:1rem; justify-content:flex-end;">
+                <button id="copy-report" class="btn btn-ghost">Copia report</button>
+                <button id="print-report" class="btn btn-ghost">Stampa</button>
             </div>
         </div>
     </div>
     <div id="main-content">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <h1 style="margin:0">Voti della Classe</h1>
-            <div style="display:flex;gap:12px;align-items:center">
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--col-border);">
+            <h1 style="margin:0; font-size:1.5rem; letter-spacing:-0.5px;">Voti della Classe</h1>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
                     <div style="display:flex; gap:8px;">
-                         <button id="open-combined-radar" class="btn-report" style="background:#fff; color:#2b7fd9; border:1px solid #2b7fd9;">Radar Classe</button>
-                         <button id="open-dataset-mgr" class="btn-report" style="margin:0;">Gestione Dati</button>
+                         <button id="open-combined-radar" class="btn btn-ghost">Radar Classe</button>
+                         <button id="open-dataset-mgr" class="btn btn-ghost">Gestione Dati</button>
                     </div>
                     <!-- Hidden file input triggered by modal -->
                     <input type="file" id="csv-file-input" accept=".csv" multiple style="display:none" title="Carica uno o più file CSV">
                     <div id="dataset-selector-container" style="display:none; align-items:center; gap:8px;">
-                        <span style="font-size:0.85rem; color:#556;">Vista:</span>
-                        <select id="dataset-selector" style="padding:4px 8px; border-radius:6px; border:1px solid #ccc; font-family:inherit; font-size:0.85rem; max-width: 200px;"></select>
+                        <span style="font-size:0.75rem; color:var(--col-text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vista:</span>
+                        <select id="dataset-selector" class="input-base" style="padding:4px 8px; font-size:0.85rem; max-width: 200px;"></select>
                     </div>
                 </div>
-                <button id="generate-report" class="btn-report" title="Genera un breve report automatico">Genera report</button>
+                <button id="generate-report" class="btn btn-primary" title="Genera un breve report automatico">Genera report</button>
             </div>
-        </div>
+        </header>
         <div id="app"></div>
     </div>
     <script>
@@ -726,7 +829,6 @@
         function openDatasetModal() {
             const modal = document.getElementById('dataset-modal');
             renderDatasetList();
-            modal.style.display = 'flex';
             modal.classList.add('active');
             document.getElementById('main-content').classList.add('blur');
         }
@@ -738,40 +840,38 @@
             updateDatasetSelector();
             renderApp(); // re-render to reflect changes
             
-            closeWithAnim(modal, 'dataset-popup', () => {
-                modal.style.display = 'none';
-            });
+            closeWithAnim(modal, 'dataset-popup');
         }
 
         function renderDatasetList() {
             const list = document.getElementById('dataset-list');
             list.innerHTML = '';
             if (GLOBAL_datasets.length === 0) {
-                list.innerHTML = '<div style="color:#777; font-style:italic; text-align:center; padding:10px;">Nessun dataset. Aggiungine uno!</div>';
+                list.innerHTML = '<div style="color:var(--col-text-muted); font-style:italic; text-align:center; padding:10px;">Nessun dataset. Aggiungine uno!</div>';
                 return;
             }
 
             GLOBAL_datasets.forEach(ds => {
                 const item = document.createElement('div');
-                item.style.cssText = 'display:flex; align-items:center; gap:8px; background:#f9fafc; padding:10px; border-radius:8px; border:1px solid #eef1f6;';
+                item.className = 'ds-item';
                 
                 // Name Input
                 const nameInp = document.createElement('input');
                 nameInp.type = 'text';
                 nameInp.value = ds.name;
                 nameInp.placeholder = 'Nome Dataset';
-                nameInp.style.cssText = 'flex:1; padding:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;';
+                nameInp.className = 'input-base';
+                nameInp.style.flex = '1';
                 nameInp.onchange = (e) => { ds.name = e.target.value; updateDatasetSelector(); saveState(); };
 
                 // Date Input (Month/Year)
-                // HTML5 month input is YYYY-MM
                 const dateInp = document.createElement('input');
                 dateInp.type = 'month';
-                // value format: YYYY-MM
                 const yyyy = ds.dateObj.getFullYear();
                 const mm = String(ds.dateObj.getMonth() + 1).padStart(2, '0');
                 dateInp.value = `${yyyy}-${mm}`;
-                dateInp.style.cssText = 'width:130px; padding:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;';
+                dateInp.className = 'input-base';
+                dateInp.style.width = '130px';
                 dateInp.onchange = (e) => {
                     if(e.target.value) {
                          const [y, m] = e.target.value.split('-');
@@ -785,7 +885,8 @@
                 const delBtn = document.createElement('button');
                 delBtn.innerHTML = '&times;';
                 delBtn.title = 'Elimina dataset';
-                delBtn.style.cssText = 'background:#ffebee; color:#c62828; border:none; width:28px; height:28px; border-radius:4px; cursor:pointer; font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center;';
+                delBtn.className = 'btn-icon-danger';
+                delBtn.style.padding = '0'; // reset flex centering
                 delBtn.onclick = () => {
                     if(confirm(`Eliminare il dataset "${ds.name}"?`)) {
                         GLOBAL_datasets = GLOBAL_datasets.filter(d => d.id !== ds.id);
@@ -884,12 +985,11 @@
             wrapper.className = 'table-wrapper';
             const table = document.createElement('table');
 
-
-            // Build colgroup: first two columns fixed, last three fixed, subjects share remaining space
+            // Build colgroup
             const colgroup = document.createElement('colgroup');
             const colNum = document.createElement('col'); colNum.style.width = '48px'; colgroup.appendChild(colNum);
             const colName = document.createElement('col'); colName.style.width = '180px'; colgroup.appendChild(colName);
-            const colAvg = document.createElement('col'); colAvg.style.width = '70px'; colgroup.appendChild(colAvg); // New Average Col
+            const colAvg = document.createElement('col'); colAvg.style.width = '70px'; colgroup.appendChild(colAvg);
             for (let i = 0; i < subjects.length; i++) {
                 colgroup.appendChild(document.createElement('col'));
             }
@@ -899,12 +999,10 @@
             table.appendChild(colgroup);
 
             const thead = document.createElement('thead');
-            // shorten "MATEMATICA" to "MATE" for display
             const displaySubjects = subjects.map(s => s === 'MATEMATICA' ? 'MATE' : s);
-            // Build header with data-col indices so sorting knows which td index to use
             let headersHtml = '<tr>';
             headersHtml += `<th class="sortable" data-col="0">N.</th>`;
-            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.78rem;color:#556">(A-Z)</span></th>`;
+            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.75rem;opacity:0.7">(A-Z)</span></th>`;
             headersHtml += `<th class="sortable" data-col="2">Media</th>`;
             displaySubjects.forEach((s, i) => { headersHtml += `<th class="subject sortable" data-col="${3 + i}">${s}</th>`; });
             const colBelowIdx = 3 + subjects.length;
@@ -915,7 +1013,6 @@
             thead.innerHTML = headersHtml;
             table.appendChild(thead);
 
-            // Precompute student averages to use for correlations
             const studentAvgs = students.map(s => {
                 const vals = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
                 return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
@@ -923,7 +1020,6 @@
 
             const tbody = document.createElement('tbody');
             students.forEach((s, idx) => {
-                const validGrades = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
                 const avg = studentAvgs[idx];
                 const below = s.grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).length;
                 const deficit = s.grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
@@ -933,101 +1029,112 @@
                 const avgClass = isNaN(avg) ? '' : (avg >= 6 ? 'green' : 'red');
                 const tr = document.createElement('tr');
                     
-                    // Student Avg Trend Logic
-                    let avgTrendArrow = '';
-                    let avgTrendClass = 'flat';
+                // Trend Logic
+                let avgTrendArrow = '';
+                let avgTrendClass = 'flat';
+                if(prevDataset) {
+                    const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
+                    if(prevStudent) {
+                         const prevVals = prevStudent.grades.filter(v=>!isNaN(v));
+                         const prevAvg = prevVals.length ? prevVals.reduce((a,b)=>a+b,0)/prevVals.length : NaN;
+                         if(!isNaN(prevAvg) && !isNaN(avg)) {
+                             if(avg > prevAvg + 0.05) { avgTrendArrow = '▲'; avgTrendClass = 'up'; }
+                             else if(avg < prevAvg - 0.05) { avgTrendArrow = '▼'; avgTrendClass = 'down'; }
+                             else { avgTrendArrow = '─'; avgTrendClass = 'flat'; }
+                         }
+                    }
+                }
+
+                tr.innerHTML =
+                `<td class="num-col">${s.id}</td>` + 
+                `<td class="name-cell">${s.name}</td>` +
+                `<td><div class="grade-wrap">
+                    <span class='avg ${avgClass}'>${isNaN(avg) ? '-' : avg.toFixed(2)}</span>
+                    ${!isNaN(avg) ? `<span class="grade-arrow ${avgTrendClass}">${avgTrendArrow}</span>` : ''}
+                 </div></td>`;
+
+                s.grades.forEach((g, i) => {
+                    const td = document.createElement('td');
+                    let trendArrow = '';
+                    let trendClass = 'flat';
                     if(prevDataset) {
-                        const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
-                        if(prevStudent) {
-                             const prevVals = prevStudent.grades.filter(v=>!isNaN(v));
-                             const prevAvg = prevVals.length ? prevVals.reduce((a,b)=>a+b,0)/prevVals.length : NaN;
-                             if(!isNaN(prevAvg) && !isNaN(avg)) {
-                                 if(avg > prevAvg + 0.05) { avgTrendArrow = '▲'; avgTrendClass = 'up'; }
-                                 else if(avg < prevAvg - 0.05) { avgTrendArrow = '▼'; avgTrendClass = 'down'; }
-                                 else { avgTrendArrow = '─'; avgTrendClass = 'flat'; }
+                         const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
+                         const subjName = subjects[i];
+                         const prevSubjIdx = prevDataset.subjects.indexOf(subjName);
+                         if(prevStudent && prevSubjIdx !== -1) {
+                             const pG = prevStudent.grades[prevSubjIdx];
+                             if(typeof g === 'number' && typeof pG === 'number') {
+                                 if(g > pG) { trendArrow = '▲'; trendClass = 'up'; }
+                                 else if(g < pG) { trendArrow = '▼'; trendClass = 'down'; }
+                                 else { trendArrow = '─'; trendClass = 'flat'; }
                              }
-                        }
+                         }
                     }
 
-                    tr.innerHTML =
-                    `<td class="num-col">${s.id}</td>` + 
-                    `<td class="name-cell">${s.name}</td>` +
-                    `<td><div style="display:flex;align-items:center;justify-content:center;gap:4px;">
-                        <span class='avg ${avgClass}' style="${isNaN(avg)?'color:#ccc;background:#f7f7f7;':''}">${isNaN(avg) ? '-' : avg.toFixed(2)}</span>
-                        ${!isNaN(avg) ? `<span class="grade-arrow ${avgTrendClass}" style="font-size:10px;">${avgTrendArrow}</span>` : ''}
-                     </div></td>` +
-                    s.grades.map((g, i) => {
-                        const missing = g === null || isNaN(g);
-                        const cls = `grade${missing ? ' missing' : ''}`;
-                        const styleObj = getGradeStyle(g);
-                        // Old styling: colored background, no dot
-                        const style = `background:${styleObj.bg}; color:${styleObj.color}; border:1px solid rgba(0,0,0,0.05);`;
-                        const text = missing ? '-' : g;
-                        
-                        // determine arrow based on comparison with class average for this subject
-                        let arrow = '';
-                        let arrowClass = '';
-                        const subjAvg = classAvg && classAvg[i];
-                        
-                        // Trend Logic: Compare with previous dataset if available
-                        let trendArrow = '';
-                        let trendClass = '';
-                        let comparisonValue = null;
-
-                        // Try to find same student in previous dataset
-                        if (prevDataset) {
-                            const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
-                            if (prevStudent) {
-                                const prevGrade = prevStudent.grades[i];
-                                if (!isNaN(prevGrade) && !isNaN(g)) {
-                                    comparisonValue = prevGrade;
-                                }
+                    if (g === null || isNaN(g)) {
+                       td.innerHTML = `<span class="grade missing">-</span>`;
+                    } else {
+                       const styleObj = getGradeStyle(g);
+                       // We keep specific color styles inline as they are dynamic (gradients)
+                       td.innerHTML = `
+                       <div class="grade-wrap">
+                           <span class="grade" style="background:${styleObj.bg}; color:${styleObj.color}; box-shadow:0 1px 2px rgba(0,0,0,0.05);">${g}</span>
+                           <div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                               <span class="grade-arrow ${trendClass}" style="font-size:10px; margin-bottom:2px;">${trendArrow}</span>
+                               <!-- Avg Indicator -->
+                               ${(classAvg && classAvg[i] && !isNaN(g)) ? 
+                                   (g > classAvg[i] ? `<div style="width:6px; height:2px; background:#1e7a1e; border-radius:1px;"></div>` : 
+                                   (g < classAvg[i] ? `<div style="width:6px; height:2px; background:#d21919; border-radius:1px;"></div>` : '')) : ''}
+                           </div>
+                       </div>`;
+                    }
+                    
+                    td.onclick = (e) => {
+                       e.stopPropagation();
+                       // Show Histogram logic...
+                        const subjName = subjects[i];
+                        const subjVals = students.map(st => st.grades[i]);
+                        const validS = subjVals.filter(x=>typeof x==='number' && !isNaN(x));
+                        const sAvg = validS.length ? validS.reduce((a,b)=>a+b,0)/validS.length : NaN;
+                        const sStd = validS.length ? Math.sqrt(validS.reduce((acc,v)=>acc+(v-sAvg)**2,0)/validS.length) : NaN;
+                        let sumXY=0, sumX=0, sumY=0, sumX2=0, sumY2=0, n=0;
+                        students.forEach((st, idx2) => {
+                            const x = st.grades[i];
+                            const y = studentAvgs[idx2];
+                            if(typeof x==='number' && !isNaN(x) && typeof y==='number' && !isNaN(y)){
+                                sumXY += x*y; sumX+=x; sumY+=y; sumX2+=x*x; sumY2+=y*y; n++;
                             }
+                        });
+                        let corr = NaN;
+                        if(n > 1) {
+                            const num = n*sumXY - sumX*sumY;
+                            const den = Math.sqrt((n*sumX2 - sumX*sumX)*(n*sumY2 - sumY*sumY));
+                            if(den!==0) corr = num/den;
                         }
-
-                        if (!isNaN(g) && comparisonValue !== null) {
-                            if (g > comparisonValue) {
-                                trendArrow = '▲'; trendClass = 'up';
-                            } else if (g < comparisonValue) {
-                                trendArrow = '▼'; trendClass = 'down';
-                            } else {
-                                trendArrow = '─'; trendClass = 'flat';
-                            }
-                        }
-
-                        // Avg Indicator logic (dash below arrow)
-                        let avgIndicatorClass = '';
-                        if (!isNaN(g) && !isNaN(subjAvg)) {
-                            if (g > subjAvg) avgIndicatorClass = 'green';
-                            else if (g < subjAvg) avgIndicatorClass = 'red';
-                            else avgIndicatorClass = 'flat';
-                        }
-                        
-                        return `<td><div class="grade-wrap">
-                                    <span class="${cls}" style="${style}">${text}</span>
-                                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                                        <span class="grade-arrow ${trendClass}" style="font-size:10px; margin-bottom:2px;">${trendArrow}</span>
-                                        ${avgIndicatorClass ? `<div style="width:6px; height:2px; background:${avgIndicatorClass==='green'?'#1e7a1e':(avgIndicatorClass==='red'?'#d21919':'#ccc')}; border-radius:1px;"></div>` : ''}
-                                    </div>
-                                </div></td>`;
-                        
-
-                    }).join('') +
-                    `<td class="below6-col ${belowClass} sep-col">${below}</td>` +
-                    `<td class="deficit-col ${deficitClass} sep-col">${deficit.toFixed(2)}</td>` +
-                    `<td class="deficit-medio-col ${deficitClass} sep-col">${ratio}</td>`;
-                    tr.onclick = () => {
-                        document.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
-                        tr.classList.add('selected');
-                        // pass class-level averages for the summary panels
-                        const stats = {
-                            belowAvg: mean(belowCounts),
-                            deficitAvg: mean(deficitsArr),
-                            ratioAvg: (function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length ? mean(vals) : NaN; })(),
-                            classOverallAvg: overallAvg
-                        };
-                        showChart(s, subjects, classAvg, stats);
+                        showHistogram(`${subjName} (Distribuzione)`, subjVals, {
+                            subjAvg: sAvg, subjStd: sStd, corr: corr,
+                            overallAvg: overallAvg,
+                            // pass extra if needed
+                        }, subjName);
                     };
+                    tr.appendChild(td);
+                });
+
+                tr.innerHTML += `<td class="sep-col"><div class="stat-box ${belowClass}">${below}</div></td>`;
+                tr.innerHTML += `<td class="sep-col"><div class="stat-box ${deficitClass}">${deficit.toFixed(2)}</div></td>`;
+                tr.innerHTML += `<td class="sep-col deficit-medio-head"><strong style="color:var(--col-text-muted); font-size:11px;">${ratio}</strong></td>`;
+                
+                tr.onclick = () => {
+                     document.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
+                     tr.classList.add('selected');
+                     const stats = {
+                         belowAvg: mean(belowCounts),
+                         deficitAvg: mean(deficitsArr),
+                         classOverallAvg: overallAvg,
+                         ratioAvg: (function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length ? mean(vals) : NaN; })()
+                     };
+                     showChart(s, subjects, classAvg, stats);
+                };
                 tbody.appendChild(tr);
             });
             table.appendChild(tbody);
@@ -1332,176 +1439,171 @@
         }
 
         function renderRadar(ctx, animate = false) {
-            if(!CHART_HISTORY.length) return;
+            const dataset = getActiveDataset();
+            if (!dataset) return;
 
-            // The focused entry determines the "Main" display (stats, bold color)
+            // Ensure we have history
+            if (!CHART_HISTORY.length) return;
+
+            // 0. Update Stats for FOCUSED entry
             const focusedEntry = CHART_HISTORY[CHART_FOCUSED_INDEX];
-            const focusedStudent = focusedEntry.student;
-            const focusedDataset = focusedEntry.dataset;
-            
-            // Update Stats Panel based on focused student
-            updateRadarStats(focusedStudent, focusedDataset);
+            if (focusedEntry) {
+                updateRadarStats(focusedEntry.student, focusedEntry.dataset);
+            }
 
-            // Prepare Labels (Subjects)
-            // We use subjects from the focused dataset
-            const subjects = focusedDataset.subjects;
-            // Calculate Trends for Labels: Compare Focused vs Previous-in-History (if any)
-            const prevEntry = CHART_FOCUSED_INDEX > 0 ? CHART_HISTORY[CHART_FOCUSED_INDEX - 1] : null;
+            const subjects = dataset.subjects;
             
-            // Prepare trend info for labels (but don't bake into strings)
-            const trendInfos = subjects.map((subj, i) => {
-                let info = { label: subj === 'MATEMATICA' ? 'MATE' : subj, color: '#2b3b4a', arrow: '' };
-                if (prevEntry) {
-                    const curr = focusedStudent.grades[i];
-                    const prevIdx = prevEntry.dataset.subjects.indexOf(subj);
-                    if (prevIdx !== -1) {
-                         const prev = prevEntry.student.grades[prevIdx];
-                         if (!isNaN(curr) && !isNaN(prev)) {
-                             if (curr > prev) { info.color = '#1ec01e'; info.arrow = '▲'; }
-                             else if (curr < prev) { info.color = '#d21919'; info.arrow = '▼'; }
-                         }
+            // Identify Previous Dataset for Trends
+            const sorted = GLOBAL_datasets.slice().sort((a,b) => a.dateObj - b.dateObj);
+            const currentIdx = sorted.findIndex(d => d.id === dataset.id);
+            const prevDataset = (currentIdx > 0) ? sorted[currentIdx - 1] : null;
+
+            // Prepare Trend Infos for the FOCUSED student
+            let trendInfos = subjects.map(s => ({ label: s, arrow: '', color: 'transparent' }));
+            
+            if (CHART_FOCUSED_INDEX !== -1 && prevDataset) {
+                // ... trend calculation ...
+                // We need to compare FOCUSED student with their previous self
+                const fStudent = focusedEntry.student;
+                // Find same student in PREV dataset (relative to focused dataset? Or relative to time?)
+                // The logical trend is: Focused Dataset vs Previous Dataset.
+                // But CHART_HISTORY contains multiple datasets.
+                // Let's stick to comparing Focused Student vs Previous Dataset in Global List
+                // (This logic was slightly ambiguous before, but let's keep it simple: Compare current FOCUSED grade vs Prev Dataset grade)
+                
+                // Re-find prev dataset relative to FOCUSED key
+                const fDataset = focusedEntry.dataset;
+                const fSortedIdx = sorted.findIndex(d => d.id === fDataset.id);
+                const fPrevDataset = (fSortedIdx > 0) ? sorted[fSortedIdx - 1] : null;
+                
+                if (fPrevDataset) {
+                    const fPrevStudent = fPrevDataset.students.find(s => s.name === fStudent.name);
+                    if (fPrevStudent) {
+                         trendInfos = subjects.map((subj, i) => {
+                            const currG = fStudent.grades[i];
+                            const prevSubjIdx = fPrevDataset.subjects.indexOf(subj);
+                            const prevG = (prevSubjIdx !== -1) ? fPrevStudent.grades[prevSubjIdx] : null;
+                            let arrow = ''; let color = 'transparent';
+                            if (currG !== null && !isNaN(currG) && prevG !== null && !isNaN(prevG)) {
+                                const diff = currG - prevG;
+                                if (diff > 0.1) { arrow = '▲'; color = '#10b981'; } 
+                                else if (diff < -0.1) { arrow = '▼'; color = '#ef4444'; } 
+                                else { arrow = '─'; color = '#94a3b8'; }
+                            }
+                            return { label: subj, arrow, color };
+                         });
                     }
                 }
-                return info;
-            });
-            // Labels for chart data (just names)
-            const labels = trendInfos.map(t => t.label);
+            }
 
-            // Prepare Datasets
-            // We show ALL history, but non-focused ones are "ghosted"
-            const sets = CHART_HISTORY.map((entry, idx) => {
+            // Main Datasets
+            const sets = [];
+            
+            // 1. History (Focused & Others)
+            CHART_HISTORY.forEach((entry, idx) => {
+                const s = entry.student;
+                const dsSource = entry.dataset;
                 const isFocused = (idx === CHART_FOCUSED_INDEX);
                 
-                // Opacity Logic
-                // Focused: Border 1, Fill 0.1 (more transparent area)
-                // History: Border ~0.4, Fill 0.05. Dots less transparent (0.8 -> visible)
+                // STYLE: Focused = Bold Blue. Others = Thin Blue (no dash).
+                const borderColor = isFocused ? '#2563eb' : 'rgba(37, 99, 235, 0.45)'; 
+                const bgColor = isFocused ? 'rgba(37, 99, 235, 0.1)' : 'transparent';
+                const borderWidth = isFocused ? 5 : 1;
+                const pointRadius = isFocused ? 5 : 3;
                 
-                let alphaBorder = 0.3;
-                let alphaBg = 0.05;
-                let order = idx;
-
-                if (isFocused) {
-                    alphaBorder = 1;
-                    alphaBg = 0.1; // More transparent area
-                    order = 999; 
-                } else {
-                    const p = (idx + 1) / CHART_HISTORY.length;
-                    alphaBorder = 0.2 + (0.3 * p); 
-                    alphaBg = 0.02 + (0.03 * p);
-                }
-
-                const colorBase = '25, 118, 210'; // #1976d2
+                // Align grades to current subjects (in case datasets differ)
+                const alignedGrades = alignGradesToSubjects(s, dsSource.subjects, subjects);
                 
-                // Point colors
-                const ptColors = entry.student.grades.map(g => {
-                    if (isNaN(g)) return 'transparent';
-                    return g >= 6 ? '#1ec01e' : '#d21919';
+                const ptColors = alignedGrades.map(g => {
+                    if (g === null || isNaN(g)) return 'transparent';
+                    return (g >= 6 ? '#16a34a' : '#dc2626');
                 });
                 
-                // History dots less transparent?
-                // We use ptColors naturally. If isFocused, full opacity.
-                // If not focused, we used `rgba(colorBase, 0.2)` -> Now we want dots visible?
-                // User: "make the dots of non used periods... less transparent"
-                // So let's use the actual red/green colors but maybe with 0.6 alpha?
-                // Or just the same colors. Let's make them visible but smaller.
-                
-                const hexToRgba = (hex, alpha) => {
-                    const r = parseInt(hex.slice(1, 3), 16);
-                    const g = parseInt(hex.slice(3, 5), 16);
-                    const b = parseInt(hex.slice(5, 7), 16);
-                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                };
-
-                let pointsBg;
-                if (isFocused) {
-                   pointsBg = ptColors;
-                } else {
-                   // Transparent dots for history
-                   pointsBg = ptColors.map(c => {
-                       if(c==='transparent') return c;
-                       return hexToRgba(c, 0.4); 
-                   });
-                }
-
-                const dsData = {
-                    label: entry.dataset.name, 
-                    data: alignGradesToSubjects(entry.student, entry.dataset.subjects, subjects), // align adds nulls for missing
-                    borderColor: `rgba(${colorBase}, ${alphaBorder})`,
-                    backgroundColor: `rgba(${colorBase}, ${alphaBg})`,
-                    pointBackgroundColor: pointsBg, 
-                    pointBorderColor: 'rgba(0,0,0,0)',
-                    pointRadius: isFocused ? 5 : 3, // History dots visible (3)
-                    pointHoverRadius: isFocused ? 7 : 5,
-                    fill: true,
-                    borderWidth: isFocused ? 3 : 1,
-                    order: order,
-                    _historyIndex: idx,
-                    spanGaps: false 
-                };
-                return dsData;
+                sets.push({
+                    label: dsSource.name, // SHOW DATASET NAME (CSV) NOT STUDENT NAME
+                    data: alignedGrades,
+                    fill: isFocused,
+                    backgroundColor: bgColor,
+                    borderColor: borderColor,
+                    pointBackgroundColor: ptColors,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1,
+                    pointRadius: pointRadius,
+                    pointHoverRadius: pointRadius + 2,
+                    borderWidth: borderWidth,
+                    borderDash: [], // No dashes for history anymore
+                    order: isFocused ? 0 : 10,
+                    _historyIndex: idx 
+                });
             });
-            // ... (Average and limit lines push here)
+
+            // 2. Class Average
             sets.push({
                  label: 'Media Classe',
-                 data: focusedDataset.classAvg,
-                 borderColor: 'rgba(255, 140, 0, 0.8)',
+                 data: dataset.classAvg,
+                 borderColor: '#f97316', 
                  backgroundColor: 'transparent',
                  pointRadius: 0,
                  borderWidth: 2,
                  borderDash: [5,5],
-                 order: 1000
+                 order: 100
             });
-            const limit6 = new Array(subjects.length).fill(6);
+
+            // 3. Limit 6
             sets.push({
-                label: 'Sufficienza (6)',
-                data: limit6,
-                borderColor: 'rgba(40, 40, 40, 0.6)',
+                label: 'Sufficienza',
+                data: new Array(subjects.length).fill(6),
+                borderColor: '#475569', 
                 backgroundColor: 'transparent',
                 pointRadius: 0,
                 borderWidth: 1,
-                order: 1001
+                borderDash: [2,2],
+                order: 101
             });
 
-            // Inline plugin to draw values INSIDE the radar
+            // --- Plugin: Value Labels (Grades) ---
             const valPlugin = {
                 id: 'valPlugin',
-                afterDatasetsDraw(chart, args, options) {
+                afterDatasetsDraw(chart) {
                     const ctx = chart.ctx;
                     const rScale = chart.scales.r;
                     const xCenter = rScale.xCenter;
                     const yCenter = rScale.yCenter;
 
-                    chart.data.datasets.forEach((dataset, i) => {
-                        if (dataset._historyIndex === CHART_FOCUSED_INDEX) {
+                    chart.data.datasets.forEach((ds, i) => {
+                        if (ds._historyIndex === CHART_FOCUSED_INDEX) {
                             const meta = chart.getDatasetMeta(i);
                             meta.data.forEach((element, index) => {
-                                const val = dataset.data[index];
+                                const val = ds.data[index];
                                 if (val !== null && !isNaN(val)) {
-                                    // Calculate vector to center
                                     const ex = element.x;
                                     const ey = element.y;
                                     const dx = xCenter - ex;
                                     const dy = yCenter - ey;
                                     const dist = Math.sqrt(dx*dx + dy*dy);
                                     
-                                    // Move 20px towards center
-                                    const offset = 20; 
-                                    const u = dx / dist; // unit vector x
-                                    const v = dy / dist; // unit vector y
+                                    const offset = 25; // Increased offset (from 15)
+                                    const u = dx / dist;
+                                    const v = dy / dist;
                                     
                                     const tx = ex + u * offset;
                                     const ty = ey + v * offset;
-
-                                    ctx.fillStyle = '#000';
-                                    ctx.font = 'bold 12px Inter';
+                                    
+                                    ctx.save();
+                                    ctx.font = 'bold 14px "Azeret Mono"';
                                     ctx.textAlign = 'center';
                                     ctx.textBaseline = 'middle';
-                                    // Fill background for readability? optional
-                                    // ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                                    // ctx.fillRect(tx - 10, ty - 8, 20, 16);
                                     
-                                    ctx.fillStyle = '#000';
+                                    const color = Array.isArray(ds.pointBackgroundColor) ? ds.pointBackgroundColor[index] : ds.pointBackgroundColor;
+                                    
+                                    ctx.strokeStyle = '#ffffff';
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeText(val, tx, ty);
+                                    
+                                    ctx.fillStyle = color || '#000';
                                     ctx.fillText(val, tx, ty);
+                                    
+                                    ctx.restore();
                                 }
                             });
                         }
@@ -1509,106 +1611,108 @@
                 }
             };
 
-            // Plugin for HTML Subject Labels
+            // --- Plugin: HTML Labels Overlay (Subjects + Arrows) ---
             const htmlLabelPlugin = {
                 id: 'htmlLabelPlugin',
                 afterRender(chart) {
                      const container = chart.canvas.parentNode;
-                     // Ensure relative positioning
                      if(getComputedStyle(container).position === 'static') {
                          container.style.position = 'relative'; 
                      }
                      
-                     // Clear old labels
                      let overlay = container.querySelector('.radar-labels-overlay');
                      if(overlay) overlay.remove();
                      
                      overlay = document.createElement('div');
                      overlay.className = 'radar-labels-overlay';
-                     overlay.style.pointerEvents = 'none';
-                     overlay.style.position = 'absolute';
-                     overlay.style.top = '0';
-                     overlay.style.left = '0';
-                     overlay.style.width = '100%';
-                     overlay.style.height = '100%';
+                     Object.assign(overlay.style, {
+                         pointerEvents: 'none', position: 'absolute',
+                         top: '0', left: '0', width: '100%', height: '100%'
+                     });
                      container.appendChild(overlay);
 
                      const rScale = chart.scales.r;
-                     const count = chart.data.labels.length;
-                     // Radius to place text at. chart.drawingArea is internal usually, 
-                     // try distanceFromCenterForValue(max)
-                     // Or rScale.getPointPosition(index, distanceFromCenter)
-                     // We place them slightly outside scale.
                      const maxVal = rScale.max;
                      
                      chart.data.labels.forEach((label, i) => {
-                         // get position for max value + padding
-                         // If max is 10, we go to 11?
-                         // Moving labels further out to prevent overlap. Used 1.8 padding.
-                         const point = rScale.getPointPositionForValue(i, maxVal + 1.8);
-                         
+                         // Position: outside max value. 
+                         // Closer to radar: maxVal + 0.8
+                         const point = rScale.getPointPositionForValue(i, maxVal + 0.8);
                          const info = trendInfos[i];
                          
                          const div = document.createElement('div');
-                         div.style.position = 'absolute';
-                         div.style.left = `${point.x}px`;
-                         div.style.top = `${point.y}px`;
-                         div.style.transform = 'translate(-50%, -50%)';
-                         div.style.textAlign = 'center';
-                         div.style.fontFamily = 'Inter, sans-serif';
-                         div.style.fontSize = '13px';
-                         div.style.fontWeight = '600';
-                         div.style.color = '#2b3b4a'; // Neutral text color
-                         div.style.whiteSpace = 'nowrap';
-                         div.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)'; // Readability
+                         Object.assign(div.style, {
+                             position: 'absolute',
+                             left: `${point.x}px`,
+                             top: `${point.y}px`,
+                             transform: 'translate(-50%, -50%)',
+                             textAlign: 'center',
+                             fontFamily: '"Azeret Mono", monospace',
+                             fontSize: '11px',
+                             fontWeight: '600',
+                             color: '#475569',
+                             whiteSpace: 'nowrap',
+                             textShadow: '0 0 4px #ffffff'
+                         });
                          
-                         // Label + Colored Arrow
-                         div.innerHTML = `${info.label} <span style="color:${info.color}">${info.arrow}</span>`;
-                         
+                         div.innerHTML = `${info.label} <span style="color:${info.color}; font-size:12px; margin-left:4px;">${info.arrow}</span>`;
                          overlay.appendChild(div);
                      });
                 }
             };
 
             // Create Chart
+            if(chart) chart.destroy();
+            
+
             chart = new Chart(ctx, {
                 type: 'radar',
                 data: {
-                    labels: labels,
+                    labels: subjects,
                     datasets: sets
                 },
-                plugins: [valPlugin, htmlLabelPlugin],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { bottom: 20, top: 40 } }, // Added top padding to move radar down
-                    animation: {
-                        duration: animate ? 1000 : 0
-                    },
-                    plugins: {
-                        legend: { display: false } // Disable default legend
-                    },
+                    layout: { padding: 10 }, // Reduced padding to bring labels closer effectively? No, overlay uses absolute.
+                    animation: { duration: animate ? 800 : 0 },
                     scales: {
                         r: {
-                            angleLines: { color: '#eee' },
-                            grid: { color: '#eee', lineWidth: 1 },
-                            pointLabels: { display: false }, // HTML labels used instead
                             min: 0, max: 10,
-                            ticks: { display: false, stepSize: 2 } 
+                            ticks: {
+                                stepSize: 2,
+                                display: false, 
+                                backdropColor: 'transparent'
+                            },
+                            pointLabels: { display: false }, 
+                            grid: {
+                                color: (ctx) => (ctx.tick.value === 6 ? '#94a3b8' : '#cbd5e1'), // Darker grid
+                                lineWidth: (ctx) => (ctx.tick.value === 6 ? 2 : 1)
+                            },
+                            angleLines: { color: '#cbd5e1' } // Darker angle lines
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#ffffff',
+                            titleColor: '#1e293b',
+                            bodyColor: '#334155',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            titleFont: { family: '"Azeret Mono"', size: 12 },
+                            bodyFont: { family: '"Azeret Mono"', size: 12 },
+                            padding: 10,
+                            displayColors: true,
+                            boxPadding: 4
                         }
                     }
-                }
+                },
+                plugins: [valPlugin, htmlLabelPlugin]
             });
 
-            // Create HTML Legend
+            // Update Custom Legend
             renderRadarLegend(sets);
-            
-            // Re-attach close handlers explicitly
-            const closeBtn = document.getElementById('radar-close');
-            closeBtn.onclick = (e) => {
-                e.stopPropagation();
-                closeRadarModal();
-            };
         }
 
         function renderRadarLegend(datasets) {
@@ -1618,13 +1722,7 @@
 
             legend = document.createElement('div');
             legend.id = 'radar-custom-legend';
-            legend.style.display = 'flex';
-            legend.style.flexWrap = 'wrap';
-            legend.style.gap = '12px';
-            legend.style.justifyContent = 'center';
-            legend.style.marginBottom = '20px'; // Increased margin
-            legend.style.marginTop = '10px'; // Added margin top
-            legend.style.fontSize = '12px';
+            legend.className = 'legend-container';
 
             // Filter relevant datasets: History, Class Avg, Limit
             // History items: index < CHART_HISTORY.length
@@ -1636,23 +1734,17 @@
                 
                 // Styling
                 const item = document.createElement('div');
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.gap = '6px';
-                item.style.cursor = 'pointer';
+                item.className = 'legend-item';
                 item.style.opacity = isFocused ? '1' : '0.6';
                 item.style.fontWeight = isFocused ? 'bold' : 'normal';
 
                 const dot = document.createElement('div');
-                dot.style.width = '10px';
-                dot.style.height = '10px';
-                dot.style.borderRadius = '50%';
-                // Strip alpha from color for legend dot if needed, but rgba is fine
+                dot.className = 'legend-dot';
                 dot.style.background = color;
                 
                 const span = document.createElement('span');
                 span.textContent = text;
-                span.style.color = '#333';
+                span.style.color = 'var(--col-text)';
 
                 item.appendChild(dot);
                 item.appendChild(span);
@@ -1673,14 +1765,14 @@
             });
 
             // Insert before chart container or stats
+            // Insert into radar popup explicitly
+            const popup = document.getElementById('radar-popup');
+            // Insert after stats panel
             const stats = document.getElementById('radar-stats');
-            if(stats) {
-                stats.parentNode.insertBefore(legend, stats.nextSibling); // Insert after stats (before chart?)
-                // Actually before chart is better. Chart is canvas sibling or container.
-                // Popup structure: close, title, stats, controls, hist-stats, chart.
-                // Insert after controls?
-                const controls = document.getElementById('histogram-controls');
-                if(controls) controls.parentNode.insertBefore(legend, controls.nextSibling);
+            if(popup && stats) {
+                stats.insertAdjacentElement('afterend', legend);
+            } else if (popup) {
+                popup.appendChild(legend);
             }
         }
         
@@ -1708,6 +1800,74 @@
         document.getElementById('radar-modal').onclick = (e) => {
              if (e.target.id === 'radar-modal') closeRadarModal();
         };
+
+        function renderRadarLegend(datasets) {
+            const container = document.getElementById('radar-popup');
+            let legend = document.getElementById('radar-custom-legend');
+            if (legend) legend.remove();
+
+            legend = document.createElement('div');
+            legend.id = 'radar-custom-legend';
+            legend.className = 'legend-container';
+
+            datasets.forEach((ds, i) => {
+                let text = ds.label;
+                let color = ds.borderColor; 
+                let isFocused = (ds._historyIndex === CHART_FOCUSED_INDEX);
+                
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.style.opacity = isFocused ? '1' : '0.6';
+                item.style.fontWeight = isFocused ? 'bold' : 'normal';
+
+                const dot = document.createElement('div');
+                dot.className = 'legend-dot';
+                dot.style.background = color;
+                
+                const span = document.createElement('span');
+                span.textContent = text;
+                span.style.color = 'var(--col-text)';
+
+                item.appendChild(dot);
+                item.appendChild(span);
+
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    if (typeof ds._historyIndex !== 'undefined') {
+                         if (CHART_FOCUSED_INDEX !== ds._historyIndex) {
+                             CHART_FOCUSED_INDEX = ds._historyIndex;
+                             if(chart) chart.destroy();
+                             const canvas = document.getElementById('chart');
+                             if(canvas) renderRadar(canvas.getContext('2d'), false);
+                         }
+                    }
+                };
+                legend.appendChild(item);
+            });
+
+            const popup = document.getElementById('radar-popup');
+            const stats = document.getElementById('radar-stats');
+            if(popup && stats) stats.insertAdjacentElement('afterend', legend);
+            else if (popup) popup.appendChild(legend);
+        }
+        
+        function closeRadarModal() {
+            const modal = document.getElementById('radar-modal');
+            closeWithAnim(modal, 'radar-popup', () => {
+                if (chart) { try { chart.destroy(); } catch(e){} chart = null; }
+                const popup = document.getElementById('radar-popup');
+                const t = popup.querySelector('#trend-chart-container');
+                if(t) t.remove();
+            });
+        }
+        
+        const cBtn = document.getElementById('radar-close');
+        if(cBtn) {
+            cBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeRadarModal();
+            };
+        }
 
         function alignGradesToSubjects(student, sourceSubjects, targetSubjects) {
             // Map grades from source order to target order
@@ -1798,18 +1958,15 @@
                 // 1. Create Container for Trend + Selector
                 const trendCont = document.createElement('div');
                 trendCont.id = 'trend-chart-container';
-                trendCont.style.marginBottom = '6px';
-                trendCont.style.height = '60px'; // Forced height container
-                trendCont.style.display = 'flex';
-                trendCont.style.flexDirection = 'column';
+                trendCont.className = 'trend-container';
                 
                 // Selector
                 const selDiv = document.createElement('div');
                 selDiv.style.marginBottom = '4px';
-                selDiv.innerHTML = '<label for="hist-dataset-sel" style="font-size:0.8rem;color:#556;">Confronto:</label> ';
+                selDiv.innerHTML = '<label for="hist-dataset-sel" style="font-size:0.8rem;color:var(--col-text-muted);">Confronto:</label> ';
                 const sel = document.createElement('select');
                 sel.id = 'hist-dataset-sel';
-                sel.style.cssText = 'padding:4px; border-radius:6px; border:1px solid #ccc; font-size:0.85rem;';
+                sel.className = 'trend-select';
                 
                 // Populate selector
                 const validDatasets = GLOBAL_datasets.filter(ds => ds.subjects.includes(subjectName))
@@ -1844,8 +2001,7 @@
                 // Trend Canvas
                 let tCanvas = document.createElement('canvas'); // Create new
                 tCanvas.id = 'trend-chart';
-                tCanvas.style.height = '100%'; 
-                tCanvas.style.width = '100%';
+                tCanvas.className = 'canvas-full';
                 trendCont.appendChild(tCanvas);
                 
                 // Insert after title
@@ -1986,13 +2142,11 @@
              const closeBtn = document.getElementById('combined-radar-close');
              const select = document.getElementById('combined-radar-select');
              
-             modal.style.display = 'flex';
              modal.classList.add('active'); 
              document.getElementById('main-content').classList.add('blur');
              
              closeBtn.onclick = () => {
                  closeWithAnim(modal, 'combined-radar-popup', () => {
-                     modal.style.display = 'none';
                      if(combinedChart) { combinedChart.destroy(); combinedChart=null; }
                  });
              };
@@ -2079,8 +2233,6 @@
                              meta.data.forEach((element, index) => {
                                  const val = ds.data[index];
                                  if (val !== null && !isNaN(val)) {
-                                     // Position: slightly towards center? or outside?
-                                     // Let's do similar to main radar: slight offset towards center
                                      const ex = element.x;
                                      const ey = element.y;
                                      const dx = xCenter - ex;
@@ -2088,21 +2240,31 @@
                                      const dist = Math.sqrt(dx*dx + dy*dy);
                                      
                                      // Offset 15px towards center
-                                     const offset = 18;
+                                     const offset = 15;
                                      const u = dx / dist; 
                                      const v = dy / dist;
                                      const tx = ex + u*offset;
                                      const ty = ey + v*offset;
                                      
-                                     ctx.fillStyle = '#000';
-                                     ctx.font = 'bold 11px Inter';
+                                     // Style
+                                     ctx.save();
+                                     ctx.font = 'bold 14px "Azeret Mono"';
                                      ctx.textAlign = 'center';
                                      ctx.textBaseline = 'middle';
-                                     // minimal outline for contrast against lines
-                                     ctx.strokeStyle = '#fff';
-                                     ctx.lineWidth = 2;
+                                     
+                                     // Color match point
+                                     const ptColor = Array.isArray(ds.pointBackgroundColor) ? ds.pointBackgroundColor[index] : ds.pointBackgroundColor;
+                                     
+                                     // White Outline
+                                     ctx.strokeStyle = '#ffffff';
+                                     ctx.lineWidth = 3;
                                      ctx.strokeText(val, tx, ty);
+                                      
+                                     // Fill
+                                     ctx.fillStyle = ptColor || '#000';
                                      ctx.fillText(val, tx, ty);
+                                     
+                                     ctx.restore();
                                  }
                              });
                         }
@@ -2110,34 +2272,56 @@
                 }
              };
 
+             // Create Chart
              combinedChart = new Chart(ctx, {
                  type: 'radar',
                  data: {
                      labels: subjects,
                      datasets: datasets
                  },
-                 plugins: [combinedValPlugin],
                  options: {
                      responsive: true,
                      maintainAspectRatio: false,
+                     scales: {
+                         r: {
+                             min: 0,
+                             max: 10,
+                             ticks: {
+                                 stepSize: 2,
+                                 backdropColor: 'transparent',
+                                 font: { family: 'Azeret Mono', size: 10 },
+                                 color: '#94a3b8'
+                             },
+                             pointLabels: {
+                                 font: { family: 'Azeret Mono', size: 11, weight: '600' },
+                                 color: '#475569',
+                                 padding: 20 // Move labels further out
+                             },
+                             grid: {
+                                 color: (ctx) => (ctx.tick.value === 6 ? '#cbd5e1' : '#f1f5f9'),
+                                 lineWidth: (ctx) => (ctx.tick.value === 6 ? 2 : 1)
+                             },
+                             angleLines: { color: '#f1f5f9' }
+                         }
+                     },
                      plugins: {
                          legend: { display: false },
-                         tooltip: { 
-                             mode: 'nearest', 
-                             intersect: true,
-                             callbacks: { title: (i) => i[0].dataset.label }
-                        }
-                     },
-                     scales: {
-                        r: {
-                            min: 0, max: 10,
-                            // Enable tick display
-                            ticks: { display: true, stepSize: 2, backdropColor:'transparent', color:'#666', font:{size:10} },
-                            grid: { color: (c) => (c.tick.value === 6 ? '#aaa' : '#eee'), lineWidth: (c) => (c.tick.value === 6 ? 2 : 1) },
-                            pointLabels: { font: { size: 12, weight: 'bold' } }
-                        }
-                    }
-                 }
+                         tooltip: {
+                             // Technical Theme
+                             backgroundColor: '#ffffff',
+                             titleColor: '#1e293b',
+                             bodyColor: '#334155',
+                             borderColor: '#e2e8f0',
+                             borderWidth: 1,
+                             titleFont: { family: '"Azeret Mono"', size: 12 },
+                             bodyFont: { family: '"Azeret Mono"', size: 12 },
+                             padding: 10,
+                             displayColors: true,
+                             boxPadding: 4
+                         }
+                     }
+                 },
+                 plugins: [combinedValPlugin] 
              });
              
              // Handle Selection
@@ -2146,8 +2330,7 @@
                  
                  combinedChart.data.datasets.forEach(d => {
                      // Reset default style
-                     // Skip Sufficiency line (no ptColors)
-                     if (!d.pointBackgroundColor) return; 
+                     if (!d.pointBackgroundColor) return; // Skip lines without points
                      
                      if (selName === "") {
                          // Everyone visible but faint
@@ -2167,6 +2350,7 @@
                              d.borderColor = 'rgba(200, 200, 200, 0.05)';
                              d.borderWidth = 1;
                              d.pointRadius = 2; // shrink dots
+                             d.order = 10; // Send back
                          }
                      }
                  });
@@ -2246,12 +2430,22 @@
 
             // build html with separate sections and per-section copy buttons
             let html = `<div>`;
-            html += `<div style="display:flex;justify-content:space-between;align-items:center"><strong>Report di classe — ${today}</strong><div></div></div>`;
-            html += `<div style="margin-top:8px;" id="sec-overall"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Metriche generali</strong><button class="sec-copy btn-plain" data-sec="overall">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${overallPlain}</pre></div>`;
-            html += `<div id="sec-subj"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Medie per materia</strong><button class="sec-copy btn-plain" data-sec="subjects">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${subjPlain}</pre></div>`;
-            html += `<div id="sec-counts"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Conteggi &lt;6 e deficit</strong><button class="sec-copy btn-plain" data-sec="counts">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${countsPlain}</pre></div>`;
-            html += `<div id="sec-top"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Classifica sintetica</strong><button class="sec-copy btn-plain" data-sec="top">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${topPlain}</pre></div>`;
-            html += `<div id="sec-comments"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Commento automatico</strong><button class="sec-copy btn-plain" data-sec="comments">Copia sezione</button></div><pre style="white-space:pre-wrap;margin:8px 0;">${commentsPlain}</pre></div>`;
+            html += `<div class="report-header"><strong>Report di classe — ${today}</strong><div></div></div>`;
+            
+            const makeSec = (id, title, key, content) => `
+                <div id="${id}" class="report-section">
+                    <div class="report-header">
+                        <strong>${title}</strong>
+                        <button class="sec-copy btn btn-ghost" style="padding:2px 8px; font-size:10px;" data-sec="${key}">Copia</button>
+                    </div>
+                    <pre class="report-pre">${content}</pre>
+                </div>`;
+
+            html += makeSec('sec-overall', 'Metriche generali', 'overall', overallPlain);
+            html += makeSec('sec-subj', 'Medie per materia', 'subjects', subjPlain);
+            html += makeSec('sec-counts', 'Conteggi <6 e deficit', 'counts', countsPlain);
+            html += makeSec('sec-top', 'Classifica sintetica', 'top', topPlain);
+            html += makeSec('sec-comments', 'Commento automatico', 'comments', commentsPlain);
             html += `</div>`;
 
             // pass a map of section plain texts to showReport so it can wire per-section copy buttons
