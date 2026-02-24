@@ -447,11 +447,36 @@
             border-radius: 50%;
         }
 
+        /* --- Navigation Buttons --- */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            font-size: 3rem;
+            color: var(--col-text-muted);
+            cursor: pointer;
+            padding: 0 16px;
+            transition: color 0.15s;
+            z-index: 20;
+            font-family: inherit;
+            line-height: 1;
+        }
+        .nav-btn:hover { color: var(--col-primary); }
+        .nav-btn.prev { left: 0; }
+        .nav-btn.next { right: 0; }
+
     </style>
     <!-- Radar Modal -->
     <div id="radar-modal" class="modal-overlay" aria-hidden="true">
         <div id="radar-popup" class="modal-content">
             <button id="radar-close" class="modal-close" title="Chiudi">&times;</button>
+            
+            <!-- Navigation Buttons -->
+            <button id="radar-prev" class="nav-btn prev" title="Precedente (Freccia SX)">&lsaquo;</button>
+            <button id="radar-next" class="nav-btn next" title="Successivo (Freccia DX)">&rsaquo;</button>
+
             <h2 id="radar-title"></h2>
             <div id="radar-stats" aria-hidden="true">
                 <div class="radar-stat"><span class="label">&lt;6</span><span class="value" id="stat-below">-</span></div>
@@ -538,21 +563,27 @@
     </div>
     <div id="main-content">
         <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--col-border);">
-            <h1 style="margin:0; font-size:1.5rem; letter-spacing:-0.5px;">Voti della Classe</h1>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                    <div style="display:flex; gap:8px;">
-                         <button id="open-combined-radar" class="btn btn-ghost">Radar Classe</button>
-                         <button id="open-dataset-mgr" class="btn btn-ghost">Gestione Dati</button>
-                    </div>
-                    <!-- Hidden file input triggered by modal -->
-                    <input type="file" id="csv-file-input" accept=".csv" multiple style="display:none" title="Carica uno o più file CSV">
-                    <div id="dataset-selector-container" style="display:none; align-items:center; gap:8px;">
-                        <span style="font-size:0.75rem; color:var(--col-text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vista:</span>
-                        <select id="dataset-selector" class="input-base" style="padding:4px 8px; font-size:0.85rem; max-width: 200px;"></select>
-                    </div>
+            <div style="display:flex; align-items:center; gap:16px;">
+                <h1 style="margin:0; font-size:1.5rem; letter-spacing:-0.5px;">Voti della Classe</h1>
+                <!-- View Controls Group -->
+                <div style="display:flex; gap:8px; padding-left:16px; border-left:1px solid var(--col-border);">
+                     <button id="open-combined-radar" class="btn btn-ghost" title="Apri Radar Classe">Radar Classe</button>
+                     <button id="privacy-toggle" class="btn btn-ghost" title="Nascondi nomi e mischia ordine" onclick="togglePrivacy()">
+                        <span class="icon">👁️</span> Privacy
+                     </button>
+                     <button id="generate-report" class="btn btn-ghost" title="Genera Report">Report</button>
                 </div>
-                <button id="generate-report" class="btn btn-primary" title="Genera un breve report automatico">Genera report</button>
+            </div>
+
+            <!-- Data Controls Group -->
+            <div style="display:flex; gap:12px; align-items:center;">
+                 <div id="dataset-selector-container" style="display:none; align-items:center; gap:8px;">
+                    <span style="font-size:0.75rem; color:var(--col-text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vista:</span>
+                    <select id="dataset-selector" class="input-base" style="padding:4px 8px; font-size:0.85rem; max-width: 200px;"></select>
+                </div>
+                <button id="open-dataset-mgr" class="btn btn-primary">Gestione Dati</button>
+                <!-- Hidden inputs -->
+                <input type="file" id="csv-file-input" accept=".csv" multiple style="display:none">
             </div>
         </header>
         <div id="app"></div>
@@ -595,8 +626,11 @@
         }
 
         // Global State
-        let GLOBAL_datasets = []; // Array of { id, name, dateStr, dateObj, students, subjects, classAvg, overallAvg }
+        let GLOBAL_datasets = []; 
         let GLOBAL_activeDatasetId = null;
+        let IS_PRIVACY_MODE = false;
+        let PRIVACY_MAP = new Map(); // Real Name -> Alias
+        let PRIVACY_SHUFFLE = []; // Array of indices shuffled
 
         // Helper to get active dataset
         function getActiveDataset() {
@@ -975,9 +1009,65 @@
             return 'yellow-shade-5';
         }
 
+        // Toggle Privacy Logic
+        function togglePrivacy() {
+            IS_PRIVACY_MODE = !IS_PRIVACY_MODE;
+            const btn = document.getElementById('privacy-toggle');
+            if (IS_PRIVACY_MODE) {
+                btn.classList.add('active');
+                btn.innerHTML = '<span class="icon">🙈</span> Privacy ON';
+                // Generate shuffle mapping
+                const dataset = getActiveDataset();
+                if (dataset) {
+                     PRIVACY_MAP.clear();
+                     PRIVACY_SHUFFLE = Array.from({length: dataset.students.length}, (_, i) => i);
+                     // Shuffle indices (Fisher-Yates)
+                     for (let i = PRIVACY_SHUFFLE.length - 1; i > 0; i--) {
+                         const j = Math.floor(Math.random() * (i + 1));
+                         [PRIVACY_SHUFFLE[i], PRIVACY_SHUFFLE[j]] = [PRIVACY_SHUFFLE[j], PRIVACY_SHUFFLE[i]];
+                     }
+                     // Assign aliases based on shuffled order
+                     dataset.students.forEach((s, i) => {
+                         // Find where this student ended up or just simple random alias?
+                         // Let's use generic "Student {N}" based on index 1..N
+                         // But we want to maintain the link to data?
+                         // Actually, we just need to display them as "Student X"
+                     });
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<span class="icon">👁️</span> Privacy';
+            }
+            renderApp();
+        }
+
         function renderTable(dataset) {
-            const { students, subjects, classAvg, overallAvg } = dataset;
+            let { students, subjects, classAvg, overallAvg } = dataset;
             const prevDataset = getPreviousDataset();
+
+            // PRIVACY MODE: Shuffle and Obfuscate
+            if (IS_PRIVACY_MODE) {
+                // If shuffle array is not valid size, regenerate it (e.g. data changed)
+                if (PRIVACY_SHUFFLE.length !== students.length) {
+                    PRIVACY_SHUFFLE = Array.from({length: students.length}, (_, i) => i);
+                    for (let i = PRIVACY_SHUFFLE.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [PRIVACY_SHUFFLE[i], PRIVACY_SHUFFLE[j]] = [PRIVACY_SHUFFLE[j], PRIVACY_SHUFFLE[i]];
+                    }
+                }
+                
+                // Create a shuffled, anonymized copy
+                // We map original student to a privacy proxy object
+                students = PRIVACY_SHUFFLE.map((origIndex, privacyIndex) => {
+                    const original = students[origIndex];
+                    return {
+                        ...original,
+                        _originalName: original.name, // Keep for restore? No, just copy properties
+                        name: `Student ${privacyIndex + 1}`, // Alias
+                        id: privacyIndex + 1 // Alias ID? Or keep real? Let's hide real ID too.
+                    };
+                });
+            }
 
             const app = document.getElementById('app');
             app.innerHTML = ''; // Clear prev content
@@ -1002,7 +1092,7 @@
             const displaySubjects = subjects.map(s => s === 'MATEMATICA' ? 'MATE' : s);
             let headersHtml = '<tr>';
             headersHtml += `<th class="sortable" data-col="0">N.</th>`;
-            headersHtml += `<th class="sortable" data-col="1">Nome <span class="sort-method" style="font-weight:400;font-size:0.75rem;opacity:0.7">(A-Z)</span></th>`;
+            headersHtml += `<th class="sortable" data-col="1">Nome ${!IS_PRIVACY_MODE ? '<span class="sort-method" style="font-weight:400;font-size:0.75rem;opacity:0.7">(A-Z)</span>' : ''}</th>`;
             headersHtml += `<th class="sortable" data-col="2">Media</th>`;
             displaySubjects.forEach((s, i) => { headersHtml += `<th class="subject sortable" data-col="${3 + i}">${s}</th>`; });
             const colBelowIdx = 3 + subjects.length;
@@ -1029,10 +1119,14 @@
                 const avgClass = isNaN(avg) ? '' : (avg >= 6 ? 'green' : 'red');
                 const tr = document.createElement('tr');
                     
-                // Trend Logic
+                // Trend Logic (Disable in Privacy Mode to avoid leaks? Or keep?)
+                // If privacy is on, matching prevDataset by name fails since name is alias.
+                // We'd need to map back to original. 
+                // For now, let's keep trends simple: If privacy mode is ON, we disable trends or accept they might break/disappear.
+                // Since `prevStudent.name` won't match "Student X", trends will naturally disappear, which is fine (Privacy).
                 let avgTrendArrow = '';
                 let avgTrendClass = 'flat';
-                if(prevDataset) {
+                if(prevDataset && !IS_PRIVACY_MODE) {
                     const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
                     if(prevStudent) {
                          const prevVals = prevStudent.grades.filter(v=>!isNaN(v));
@@ -1057,7 +1151,7 @@
                     const td = document.createElement('td');
                     let trendArrow = '';
                     let trendClass = 'flat';
-                    if(prevDataset) {
+                    if(prevDataset && !IS_PRIVACY_MODE) {
                          const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
                          const subjName = subjects[i];
                          const prevSubjIdx = prevDataset.subjects.indexOf(subjName);
@@ -1091,7 +1185,7 @@
                     
                     td.onclick = (e) => {
                        e.stopPropagation();
-                       // Show Histogram logic...
+                       // Show Histogram Logic
                         const subjName = subjects[i];
                         const subjVals = students.map(st => st.grades[i]);
                         const validS = subjVals.filter(x=>typeof x==='number' && !isNaN(x));
@@ -1099,6 +1193,7 @@
                         const sStd = validS.length ? Math.sqrt(validS.reduce((acc,v)=>acc+(v-sAvg)**2,0)/validS.length) : NaN;
                         let sumXY=0, sumX=0, sumY=0, sumX2=0, sumY2=0, n=0;
                         students.forEach((st, idx2) => {
+                             // Use computed studentAvgs for correlation
                             const x = st.grades[i];
                             const y = studentAvgs[idx2];
                             if(typeof x==='number' && !isNaN(x) && typeof y==='number' && !isNaN(y)){
@@ -1133,6 +1228,17 @@
                          classOverallAvg: overallAvg,
                          ratioAvg: (function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length ? mean(vals) : NaN; })()
                      };
+                     
+                     // Set Navigation Context
+                     NAV_CTX = {
+                         students: students, // Current sorted/filtered/anonymized list
+                         index: idx, // Index in that list
+                         subjects: subjects,
+                         classAvg: classAvg,
+                         stats: stats,
+                         overallAvg: overallAvg
+                     };
+                     
                      showChart(s, subjects, classAvg, stats);
                 };
                 tbody.appendChild(tr);
@@ -1382,12 +1488,23 @@
         }
 
         // Radar chart as modal popup
-        let chart;
-        // Store history for toggling
         let CHART_HISTORY = [];
         let CHART_FOCUSED_INDEX = -1; // -1 means default view (latest focused)
 
         function showChart(student, subjects, classAvg, stats) {
+            // Update NAV_CTX if this is an "external" call (not from navigation itself)
+            // But how do we distinguish? 
+            // We can detect if `student` is already in NAV_CTX or just check if the logic flow came from `navigateStudent`.
+            // Actually, `navigateStudent` updates index and calls showChart.
+            // If called from `renderTable` click, we need to initialize NAV_CTX.
+            
+            // To be safe, if we are NOT navigating (implicit check), we generally set it up.
+            // But simpler: `renderTable` should populate NAV_CTX before calling `showChart`, OR pass it.
+            // Let's modify `showChart` to NOT reset NAV_CTX if it's already set for this student?
+            // No, `renderTable` has the context of the list. `navigateStudent` has the context.
+            // `showChart` is just the displayer.
+            // So we need to set NAV_CTX in the `onclick` handler in `renderTable`.
+            
             const modal = document.getElementById('radar-modal');
             const title = document.getElementById('radar-title');
             title.textContent = student.name;
@@ -1686,7 +1803,7 @@
                             },
                             pointLabels: { display: false }, 
                             grid: {
-                                color: (ctx) => (ctx.tick.value === 6 ? '#94a3b8' : '#cbd5e1'), // Darker grid
+                                color: (ctx) => (ctx.tick.value === 6 ? '#64748b' : '#cbd5e1'), // Darker limit and grid
                                 lineWidth: (ctx) => (ctx.tick.value === 6 ? 2 : 1)
                             },
                             angleLines: { color: '#cbd5e1' } // Darker angle lines
@@ -1714,6 +1831,70 @@
             // Update Custom Legend
             renderRadarLegend(sets);
         }
+
+        // Global Navigation Context
+        let NAV_CTX = {
+            students: [],
+            index: -1,
+            subjects: [],
+            classAvg: []
+        };
+
+        function navigateStudent(offset) {
+            if (!NAV_CTX.students.length || NAV_CTX.index === -1) return;
+            
+            let newIdx = NAV_CTX.index + offset;
+            // Wrap around
+            if (newIdx < 0) newIdx = NAV_CTX.students.length - 1;
+            if (newIdx >= NAV_CTX.students.length) newIdx = 0;
+            
+            NAV_CTX.index = newIdx;
+            const s = NAV_CTX.students[newIdx];
+            
+            // Re-calculate stats for new student
+            // Reuse logic from renderTable or extract it?
+            // Extract stats calculation logic
+            const grades = s.grades;
+            const below = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).length;
+            const deficit = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+            const ratio = below > 0 ? (deficit / below).toFixed(2) : '';
+            
+            // Need overall class average... stored in NAV_CTX?
+            const overallAvg = NAV_CTX.overallAvg || NaN; 
+            
+            // We need array of belowCounts etc to calculate class means for comparison?
+            // Actually `stats` passed to showChart contained class-wide stats (avg deficit etc).
+            // Those don't change between students of same class! 
+            // So we can persist the `stats` object in NAV_CTX.
+            
+            // But we need to update the individual student's stats in the UI...
+            // `showChart` does that via `renderRadar` -> `updateRadarStats`. 
+            // `updateRadarStats` calculates student stats on fly.
+            // The `stats` argument to `showChart` is seemingly unused inside `showChart`? 
+            // Wait, let me check `showChart` definition... 
+            // `showChart` stores `stats` nowhere. It calls `renderRadar`.
+            // `renderRadar` calls `updateRadarStats(focusedEntry.student...)`.
+            // Ah, there is `renderRadar` logic using `updateRadarStats`.
+            // So `showChart` mainly sets up the modal and history.
+            
+            showChart(s, NAV_CTX.subjects, NAV_CTX.classAvg, NAV_CTX.stats);
+        }
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('radar-modal');
+            if (modal && modal.classList.contains('active')) {
+                if (e.key === 'ArrowLeft') {
+                    navigateStudent(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navigateStudent(1);
+                }
+            }
+        });
+
+        // Button Listeners
+        document.getElementById('radar-prev').addEventListener('click', () => navigateStudent(-1));
+        document.getElementById('radar-next').addEventListener('click', () => navigateStudent(1));
 
         function renderRadarLegend(datasets) {
             const container = document.getElementById('radar-popup');
@@ -2202,11 +2383,24 @@
                  };
              });
              
+             // Add Class Average
+             datasets.push({
+                  label: 'Media Classe',
+                  data: ds.classAvg,
+                  borderColor: '#f97316', 
+                  backgroundColor: 'transparent',
+                  pointRadius: 0,
+                  borderWidth: 2,
+                  borderDash: [5,5],
+                  order: 0
+             });
+
              // Add Limit-6 line on top
              datasets.push({
                  label: 'Sufficienza',
                  data: new Array(subjects.length).fill(6),
                  borderColor: 'rgba(50,50,50,0.5)',
+                 backgroundColor: 'transparent', // Ensure no fill
                  borderWidth: 1,
                  borderDash: [5,5],
                  pointRadius: 0,
@@ -2248,21 +2442,26 @@
                                      
                                      // Style
                                      ctx.save();
-                                     ctx.font = 'bold 14px "Azeret Mono"';
+                                     ctx.font = 'bold 11px "Azeret Mono"'; // Smaller font (was 14px)
                                      ctx.textAlign = 'center';
                                      ctx.textBaseline = 'middle';
                                      
                                      // Color match point
                                      const ptColor = Array.isArray(ds.pointBackgroundColor) ? ds.pointBackgroundColor[index] : ds.pointBackgroundColor;
                                      
+                                     let displayVal = val;
+                                     if(typeof val === 'number' && ds.label === 'Media Classe') {
+                                         displayVal = val.toFixed(1);
+                                     }
+
                                      // White Outline
                                      ctx.strokeStyle = '#ffffff';
                                      ctx.lineWidth = 3;
-                                     ctx.strokeText(val, tx, ty);
+                                     ctx.strokeText(displayVal, tx, ty);
                                       
                                      // Fill
                                      ctx.fillStyle = ptColor || '#000';
-                                     ctx.fillText(val, tx, ty);
+                                     ctx.fillText(displayVal, tx, ty);
                                      
                                      ctx.restore();
                                  }
@@ -2290,18 +2489,18 @@
                                  stepSize: 2,
                                  backdropColor: 'transparent',
                                  font: { family: 'Azeret Mono', size: 10 },
-                                 color: '#94a3b8'
+                                 color: '#334155' // Darker text
                              },
                              pointLabels: {
                                  font: { family: 'Azeret Mono', size: 11, weight: '600' },
-                                 color: '#475569',
+                                 color: '#1e293b', // Darker labels
                                  padding: 20 // Move labels further out
                              },
                              grid: {
-                                 color: (ctx) => (ctx.tick.value === 6 ? '#cbd5e1' : '#f1f5f9'),
+                                 color: (ctx) => (ctx.tick.value === 6 ? '#64748b' : '#cbd5e1'), // Darker limit and grid
                                  lineWidth: (ctx) => (ctx.tick.value === 6 ? 2 : 1)
                              },
-                             angleLines: { color: '#f1f5f9' }
+                             angleLines: { color: '#cbd5e1' } // Darker angle lines
                          }
                      },
                      plugins: {

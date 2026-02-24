@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Transition Simulator</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231484e6'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-panel: #ffffff;
+            --color-bg-track: #f7f9fb;
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #555555;
+            --color-accent: #1484e6;
+            --color-accent-dark: #0f6cb8;
+            --color-border: #e0e0e0;
+            --font-mono: 'Space Mono', monospace;
+            --radius-md: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100dvh;
+            font-family: var(--font-mono);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            overflow: hidden;
+            opacity: 1; /* removed transition for load */
+        }
+
+        .material-symbols-outlined {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            background-color: var(--color-bg-panel);
+            border-right: 1px solid var(--color-border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.02);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            margin: 0 0 0.25rem 0;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        header p {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin: 0;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-text-muted);
+            font-weight: 700;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 8px;
+            margin-top: 24px;
+        }
+
+        .section-title-clean {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-top: 0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .control-group-row {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-description {
+            font-size: 0.65rem;
+            color: #888;
+            margin-top: 4px;
+            line-height: 1.2;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--color-border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        button {
+            background-color: var(--color-bg);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-main);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        button:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+            background-color: #f0f7ff;
+        }
+
+        .plots-wrapper {
+            background-color: var(--color-bg-track);
+            padding: 24px;
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            overflow: hidden;
+            background-image: radial-gradient(var(--color-border) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .plot-container {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .plot-label {
+            position: absolute;
+            top: 12px;
+            left: 16px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--color-text-muted);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 5;
+            border: 1px solid var(--color-border);
+            text-transform: uppercase;
+        }
+
+        .plot-info-overlay {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--color-accent);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 5;
+            border: 1px solid var(--color-border);
+            font-family: var(--font-mono);
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* SVG Phase diagram specifics */
+        .diagram {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Sim canvas specifics */
+        #simCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain; /* keep aspect ratio square if needed */
+            background-color: white;
+            image-rendering: pixelated; /* sharp pixels */
+        }
+        
+        .phase-label {
+            position: absolute;
+            pointer-events: none;
+            font-size: 11px;
+            font-weight: bold;
+            opacity: 0.7;
+            letter-spacing: 1px;
+            font-family: var(--font-mono);
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                overflow-y: auto;
+            }
+            body { overflow-y: auto; }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--color-border); }
+            .plots-wrapper { flex-direction: column; min-height: 800px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <header>
+            <h1>PHASE TRANSITION</h1>
+            <p>Lattice Gas Model</p>
+        </header>
+
+        <div class="section-title">State Controls</div>
+        
+        <div class="control-group">
+            <div class="control-label">
+                <span>Temperature (T)</span>
+                <span id="valT" style="color: var(--color-accent);">1.000</span>
+            </div>
+            <input type="range" id="sliderT" min="0.01" max="5.0" step="0.01" value="1.0">
+            <div class="control-description">Controls particle kinetic energy. Critical Temp T_c ≈ 2.269.</div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Chemical Potential (μ)</span>
+                <span id="valMu" style="color: var(--color-accent);">0.000</span>
+            </div>
+            <input type="range" id="sliderMu" min="-2.0" max="2.0" step="0.01" value="0.0">
+            <div class="control-description">Acts as effective pressure. Determines gas vs liquid preference.</div>
+        </div>
+
+        <div class="section-title">Display</div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Simulation Size</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div style="display: flex; flex-direction: column; flex: 1;">
+                    <span style="font-size: 0.65rem; color: #888; font-weight: 600; margin-bottom: 2px;">WIDTH</span>
+                    <input type="number" id="simWidth" value="200" min="10" max="1000" style="font-family: var(--font-mono); padding: 8px; border-radius: 6px; border: 1px solid var(--color-border); font-size: 0.85rem; outline: none; width: 100%;">
+                </div>
+                <div style="display: flex; flex-direction: column; flex: 1;">
+                    <span style="font-size: 0.65rem; color: #888; font-weight: 600; margin-bottom: 2px;">HEIGHT</span>
+                    <input type="number" id="simHeight" value="200" min="10" max="1000" style="font-family: var(--font-mono); padding: 8px; border-radius: 6px; border: 1px solid var(--color-border); font-size: 0.85rem; outline: none; width: 100%;">
+                </div>
+            </div>
+            <button onclick="changeSize()" style="margin-top: 8px; padding: 8px; font-size: 0.75rem;">
+                <span class="material-symbols-outlined" style="font-size: 16px;">aspect_ratio</span> APPLY SIZE
+            </button>
+        </div>
+
+        <button onclick="resetSim()" style="margin-top: 16px;">
+            <span class="material-symbols-outlined">restart_alt</span> RESET SIMULATION
+        </button>
+
+        <div style="flex:1"></div>
+
+        <div style="margin-top: 24px; padding: 12px; background: #f0f7ff; border-radius: 6px; border: 1px solid #cce0ff;">
+            <p style="font-size: 0.75rem; color: #335588; line-height: 1.5; margin: 0;">
+                <strong>How it works:</strong> This is a Grand Canonical Lattice Gas simulation (equivalent to the Ising model). <br><br>
+                Drag the interactive circle in the <strong>Phase Diagram</strong> to change the Temperature (T) and Chemical Potential (μ). <br><br>
+                - <strong>High T:</strong> Supercritical fluid (chaotic).<br>
+                - <strong>Low T, μ > 0:</strong> Liquid (dense, clustering).<br>
+                - <strong>Low T, μ < 0:</strong> Gas (sparse).
+            </p>
+        </div>
+
+        <div style="flex:1"></div>
+
+        <div class="section-title" style="border:none; margin-top:0;">Info</div>
+        <p style="font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.5; margin-top:0;">
+            This simulation uses a Grand Canonical Monte Carlo approach on a 2D lattice. 
+            At T &lt; T_c and μ ≈ 0, the system exhibits liquid-gas coexistence. 
+            For T &gt; T_c, it enters a supercritical state where phase boundaries vanish.
+        </p>
+
+    </aside>
+
+    <main class="plots-wrapper">
+        <!-- Phase Diagram -->
+        <div class="plot-container" style="flex: 1.2;">
+            <div class="plot-label">PHASE DIAGRAM</div>
+            <div class="canvas-wrapper" style="display: flex; justify-content: center; align-items: center; padding: 40px;">
+                <div style="position: relative; width: 100%; max-width: 500px; aspect-ratio: 1 / 1;">
+                    <svg class="diagram" id="diagram" viewBox="-20 -20 400 400" preserveAspectRatio="xMidYMid meet" style="position: absolute; width: 100%; height: 100%;">
+                        <defs>
+                            <linearGradient id="gradient-supercritical" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stop-color="rgba(20, 132, 230, 0)" />
+                                <stop offset="100%" stop-color="rgba(20, 132, 230, 0.15)" />
+                            </linearGradient>
+                            <linearGradient id="gradient-liquid" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(20, 132, 230, 0.4)" />
+                                <stop offset="100%" stop-color="rgba(20, 132, 230, 0.15)" />
+                            </linearGradient>
+                            <linearGradient id="gradient-gas" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(20, 132, 230, 0.1)" />
+                                <stop offset="100%" stop-color="rgba(255, 255, 255, 0.1)" />
+                            </linearGradient>
+                        </defs>
+                    
+                        <!-- Regions -->
+                        <!-- Liquid -->
+                        <path d="M 40 40 L 220 40 L 220 200 L 40 200 Z" fill="url(#gradient-liquid)" />
+                        <!-- Gas -->
+                        <path d="M 40 200 L 220 200 L 220 360 L 40 360 Z" fill="url(#gradient-gas)" />
+                        <!-- Supercritical -->
+                        <path d="M 220 40 L 360 40 L 360 360 L 220 360 Z" fill="url(#gradient-supercritical)" />
+
+                        <!-- Grid Lines -->
+                        <line x1="40" y1="120" x2="220" y2="120" stroke="rgba(20, 132, 230, 0.1)" stroke-width="1"/>
+                        <line x1="40" y1="280" x2="220" y2="280" stroke="rgba(20, 132, 230, 0.1)" stroke-width="1"/>
+                        <line x1="130" y1="40" x2="130" y2="360" stroke="rgba(20, 132, 230, 0.1)" stroke-width="1"/>
+                        <line x1="290" y1="40" x2="290" y2="360" stroke="rgba(20, 132, 230, 0.1)" stroke-width="1"/>
+
+                        <!-- Axes -->
+                        <line x1="40" y1="360" x2="360" y2="360" stroke="#1a1a1a" stroke-width="2"/>
+                        <line x1="40" y1="360" x2="40" y2="40" stroke="#1a1a1a" stroke-width="2"/>
+                        
+                        <!-- T_c line -->
+                        <line x1="220" y1="360" x2="220" y2="40" stroke="#1a1a1a" stroke-dasharray="4" stroke-width="1" opacity="0.5"/>
+                        <text x="220" y="380" fill="#1a1a1a" font-size="12" font-family="var(--font-mono)" font-weight="bold" text-anchor="middle">T_c</text>
+                        
+                        <!-- Coexistence line -->
+                        <line x1="40" y1="200" x2="220" y2="200" stroke="#1484e6" stroke-width="4" id="coexistence-line"/>
+                        <circle cx="220" cy="200" r="5" fill="#0f6cb8" /> <!-- critical point -->
+                        <text x="30" y="204" fill="#1a1a1a" font-size="12" font-family="var(--font-mono)" text-anchor="end">0</text>
+                        
+                        <!-- Labels -->
+                        <text x="200" y="395" fill="#555555" font-size="12" font-family="var(--font-mono)" font-weight="bold" text-anchor="middle">Temperature (T)</text>
+                        <text x="-15" y="200" fill="#555555" font-size="12" font-family="var(--font-mono)" font-weight="bold" transform="rotate(-90 -15 200)" text-anchor="middle">Chemical Potential (μ)</text>
+                        
+                        <!-- Interactive dot -->
+                        <circle id="cursor" cx="220" cy="200" r="8" fill="#ffffff" stroke="#1484e6" stroke-width="3" style="cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"/>
+                    </svg>
+
+                    <div class="phase-label" style="top: 25%; left: 35%; color: #0f6cb8;">LIQUID</div>
+                    <div class="phase-label" style="bottom: 25%; left: 35%; color: #888;">GAS</div>
+                    <div class="phase-label" style="top: 50%; right: 15%; color: #555; transform: translateY(-50%);">SUPERCRITICAL</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulation -->
+        <div class="plot-container" style="flex: 1;">
+            <div class="plot-label">SIMULATION</div>
+            <div class="plot-info-overlay">ρ: <span id="valDensity">0.000</span></div>
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas"></canvas>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Elements
+    const svg = document.getElementById('diagram');
+    const cursor = document.getElementById('cursor');
+    const valT = document.getElementById('valT');
+    const valMu = document.getElementById('valMu');
+    const sliderT = document.getElementById('sliderT');
+    const sliderMu = document.getElementById('sliderMu');
+    const valDensity = document.getElementById('valDensity');
+    const coexistenceLine = document.getElementById('coexistence-line');
+    
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // Constants
+    const T_c = 2.26918531421; 
+    let T = 1.0;
+    let Mu = 0.0;
+    
+    // SVG Coordinate Mapping
+    const MAP_X_MIN = 40;
+    const MAP_X_MAX = 360;
+    const MAP_Y_MIN = 40;
+    const MAP_Y_MAX = 360;
+    const X_TC = 220;
+    const Y_MUC = 200;
+
+    // Simulation mapping
+    // T mapping: MAP_X_MIN -> 0, X_TC -> T_c
+    // Let's cap SVG representation to T=4.0
+    const T_MAX_SVG = 4.0;
+    
+    function mapRealToSvg(t, mu) {
+        let x = MAP_X_MIN + (t / T_c) * (X_TC - MAP_X_MIN);
+        let muScale = (MAP_Y_MAX - MAP_Y_MIN) / 4.0; 
+        let y = Y_MUC - (mu * muScale);
+        return { x, y };
+    }
+
+    function mapSvgToReal(x, y) {
+        let tFraction = (x - MAP_X_MIN) / (X_TC - MAP_X_MIN);
+        let t = tFraction * T_c;
+        let muScale = (MAP_Y_MAX - MAP_Y_MIN) / 4.0; 
+        let mu = -(y - Y_MUC) / muScale;
+        return { t, mu };
+    }
+
+    function updateState(t, mu, updateSliders = false, updateCursor = false) {
+        T = Math.max(0.01, t);
+        Mu = mu;
+        
+        valT.textContent = T.toFixed(3);
+        valMu.textContent = Mu.toFixed(3);
+
+        if (updateSliders) {
+            sliderT.value = T;
+            sliderMu.value = Mu;
+        }
+
+        if (updateCursor) {
+            let pos = mapRealToSvg(T, Mu);
+            let cx = Math.max(MAP_X_MIN, Math.min(MAP_X_MAX, pos.x));
+            let cy = Math.max(MAP_Y_MIN, Math.min(MAP_Y_MAX, pos.y));
+            cursor.setAttribute('cx', cx);
+            cursor.setAttribute('cy', cy);
+        }
+
+        // Highlight coexistence line
+        if (T < T_c && Math.abs(Mu) < 0.05) {
+            coexistenceLine.setAttribute('stroke', '#0f6cb8');
+            coexistenceLine.setAttribute('stroke-width', '6');
+        } else {
+            coexistenceLine.setAttribute('stroke', '#1484e6');
+            coexistenceLine.setAttribute('stroke-width', '3');
+        }
+    }
+
+    // SVG Interactivity
+    let isDragging = false;
+    
+    function handleSvgInteraction(e) {
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
+        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+        
+        let x = Math.max(MAP_X_MIN, Math.min(MAP_X_MAX, svgP.x));
+        let y = Math.max(MAP_Y_MIN, Math.min(MAP_Y_MAX, svgP.y));
+        
+        let realVals = mapSvgToReal(x, y);
+        updateState(realVals.t, realVals.mu, true, true);
+    }
+
+    svg.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        handleSvgInteraction(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (isDragging) handleSvgInteraction(e);
+    });
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+
+    // Sliders Interactivity
+    sliderT.addEventListener('input', (e) => {
+        updateState(parseFloat(e.target.value), Mu, false, true);
+    });
+    sliderMu.addEventListener('input', (e) => {
+        updateState(T, parseFloat(e.target.value), false, true);
+    });
+
+    // Simulation code
+    let simW = parseInt(document.getElementById('simWidth').value);
+    let simH = parseInt(document.getElementById('simHeight').value);
+    let grid = new Int8Array(simW * simH);
+    let offCanvas = document.createElement('canvas');
+    let offCtx, offImgData, data;
+
+    function initSimBuffers() {
+        grid = new Int8Array(simW * simH);
+        for (let i = 0; i < simW * simH; i++) {
+            grid[i] = Math.random() < 0.5 ? 1 : -1;
+        }
+        offCanvas.width = simW;
+        offCanvas.height = simH;
+        offCtx = offCanvas.getContext('2d', { alpha: false });
+        offImgData = offCtx.createImageData(simW, simH);
+        data = new Uint32Array(offImgData.data.buffer);
+        resizeCanvas();
+    }
+
+    function changeSize() {
+        let newW = parseInt(document.getElementById('simWidth').value);
+        let newH = parseInt(document.getElementById('simHeight').value);
+        if (newW > 0 && newH > 0) {
+            simW = newW;
+            simH = newH;
+            initSimBuffers();
+        }
+    }
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        // keep square
+        const size = Math.min(rect.width, rect.height);
+        canvas.width = size;
+        canvas.height = size;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Modern colors to match theme
+    // Liquid: #1484e6 (ABGR = 0xffe68414)
+    // Gas: white/light grey (ABGR = 0xfff7f9fb)
+    const colorLiquid = 0xffe68414; 
+    const colorGas = 0xfffbf9f7;
+
+    function resetSim() {
+        updateState(1.0, 0.0, true, true);
+        initSimBuffers();
+    }
+
+    let stepsPerFrame = 0; 
+    
+    function render() {
+        let liquidCount = 0;
+        let totalCells = simW * simH;
+        for (let i = 0; i < totalCells; i++) {
+            if (grid[i] === 1) {
+                liquidCount++;
+                data[i] = colorLiquid;
+            } else {
+                data[i] = colorGas;
+            }
+        }
+        offCtx.putImageData(offImgData, 0, 0);
+        
+        ctx.imageSmoothingEnabled = false; // pixel art aesthetic
+        ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
+        
+        valDensity.textContent = (liquidCount / totalCells).toFixed(3);
+    }
+
+    function simulate() {
+        let totalCells = simW * simH;
+        stepsPerFrame = totalCells * 5; // 5 sweeps per frame
+        
+        let effectiveMu = Mu * 2.0;
+
+        for (let step = 0; step < stepsPerFrame; step++) {
+            let idx = (Math.random() * totalCells) | 0;
+            let x = idx % simW;
+            let y = (idx / simW) | 0;
+            
+            let xl = (x === 0) ? simW - 1 : x - 1;
+            let xr = (x === simW - 1) ? 0 : x + 1;
+            let yu = (y === 0) ? simH - 1 : y - 1;
+            let yd = (y === simH - 1) ? 0 : y + 1;
+            
+            let sumN = grid[y*simW + xl] + grid[y*simW + xr] + grid[yu*simW + x] + grid[yd*simW + x];
+            let s = grid[idx];
+            
+            let exactDe = 2 * s * (sumN + effectiveMu);
+            
+            if (exactDe <= 0) {
+                grid[idx] = -s;
+            } else if (Math.random() < Math.exp(-exactDe / T)) {
+                grid[idx] = -s;
+            }
+        }
+        
+        render();
+        requestAnimationFrame(simulate);
+    }
+
+    // Initialize
+    updateState(1.0, 0.0, true, true);
+    initSimBuffers();
+    requestAnimationFrame(simulate);
+
+</script>
+</body>
+</html>
