@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecular Dynamics: Water (H2O)</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M25 25h50v50H25z' fill='%23B01A00'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-panel: #ffffff;
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #555555;
+            --color-accent: #B01A00;
+            --color-border: #e0e0e0;
+            --font-mono: 'Space Mono', monospace;
+            --radius-md: 4px;
+        }
+
+        /* Minimal Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100dvh;
+            font-family: var(--font-mono);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            overflow: hidden; opacity: 1;
+        }
+
+        .material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+        .app-container { display: grid; grid-template-columns: 350px 1fr; width: 100%; height: 100%; }
+
+        .sidebar {
+            background-color: var(--color-bg-panel); border-right: 1px solid var(--color-border);
+            padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 10;
+        }
+        header h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; font-weight: 700; letter-spacing: -1px; }
+        header p { font-size: 0.85rem; color: var(--color-text-muted); margin: 0; }
+        .section-title {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-text-muted);
+            font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-top: 24px;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .control-label { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); display: flex; justify-content: space-between; }
+        
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 4px; background: var(--color-border); border-radius: 2px; outline: none; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--color-accent); cursor: pointer; transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .toggle-group {
+            display: flex; align-items: center; justify-content: space-between; margin-top: 12px;
+        }
+        .toggle-label { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); }
+        .toggle-switch {
+            position: relative; width: 40px; height: 20px;
+            background: var(--color-border); border-radius: 10px; cursor: pointer; transition: background 0.3s;
+        }
+        .toggle-switch.active { background: var(--color-accent); }
+        .toggle-switch::after {
+            content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+            background: white; border-radius: 50%; transition: left 0.3s;
+        }
+        .toggle-switch.active::after { left: 22px; }
+
+        button {
+            background-color: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-main);
+            padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-weight: 700; cursor: pointer;
+            transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.8rem;
+        }
+        button:hover { border-color: var(--color-accent); color: var(--color-accent); }
+        
+        @keyframes emergencyPulse {
+            0% { box-shadow: 0 0 0 0 rgba(176, 26, 0, 0.4); border-color: var(--color-accent); }
+            70% { box-shadow: 0 0 0 10px rgba(176, 26, 0, 0); border-color: var(--color-accent); }
+            100% { box-shadow: 0 0 0 0 rgba(176, 26, 0, 0); border-color: var(--color-border); }
+        }
+        .pulse-alert { animation: emergencyPulse 1s infinite; color: var(--color-accent) !important; }
+
+        .plots-wrapper {
+            background-color: #ffffff; display: flex; flex-direction: row; 
+            overflow: hidden; align-items: center; width: 100%; height: 100%; justify-content: center;
+        }
+        .plot-container {
+            flex: 1; height: 100%; width: 100%;
+            background: white; border-left: 1px solid var(--color-border);
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .plot-label {
+            position: absolute; top: 12px; left: 16px; font-size: 0.65rem; font-weight: 700; color: var(--color-text-muted);
+            background: rgba(255, 255, 255, 0.9); padding: 3px 8px; border-radius: 4px; z-index: 5; border: 1px solid var(--color-border); text-transform: uppercase;
+        }
+        .plot-info-overlay {
+            position: absolute; top: 12px; right: 16px; font-size: 0.7rem; font-weight: 700; color: var(--color-accent);
+            background: rgba(255, 255, 255, 0.9); padding: 3px 8px; border-radius: 4px; pointer-events: none; z-index: 5; border: 1px solid var(--color-border);
+        }
+        
+        #simCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <header style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px;">
+            <div>
+                <h1>MOLECULAR DYNAMICS</h1>
+                <p>Water (H<sub>2</sub>O) Simulation</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="btnReset" onclick="resetSim()" style="flex: 1;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">restart_alt</span> RELAX
+                </button>
+                <button onclick="resetDefaults()" style="flex: 1;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">settings_backup_restore</span> DEFAULTS
+                </button>
+            </div>
+        </header>
+
+        <div class="section-title">Thermodynamics</div>
+        
+        <div class="control-group">
+            <div class="control-label">
+                <span>Temperature (K)</span>
+                <span id="valT" style="color: var(--color-accent);">150</span>
+            </div>
+            <input type="range" id="sliderT" min="1" max="600" step="1" value="150">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Thermostat controls kinetic average via Berendsen velocity rescaling.</div>
+        </div>
+
+        <div class="control-group" style="margin-top: 24px;">
+            <div class="control-label">
+                <span>Pressure / Volume Box</span>
+                <span id="valP" style="color: var(--color-text-muted);">1.0</span>
+            </div>
+            <input type="range" id="sliderP" min="0.2" max="2.0" step="0.02" value="1.0">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Compress or expand the physical simulation boundary limit to simulate pressure. (0.2 = High P, 2.0 = Low P)</div>
+        </div>
+
+        <div class="control-group" style="margin-top: 24px;">
+            <div class="control-label">
+                <span>Number of Molecules</span>
+                <span id="valMolecules" style="color: var(--color-accent);">100</span>
+            </div>
+            <input type="range" id="sliderMolecules" min="4" max="250" step="1" value="100">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Amount of H2O molecules (adjusts density).</div>
+        </div>
+
+        <div class="control-group" style="margin-top: 24px;">
+            <div class="control-label" style="margin-bottom: 4px;">
+                <span>Phase Diagram (T-P)</span>
+            </div>
+            <div style="width: 100%; aspect-ratio: 1.5/1; background: #f9f9f9; border: 1px solid var(--color-border); border-radius: 4px; position: relative;">
+                <svg id="svgPhase" viewBox="0 0 300 200" style="width: 100%; height: 100%; cursor: crosshair;">
+                    <!-- Temperature Gradient Background (optional subtle styling or blank plane) -->
+                    <rect width="300" height="200" fill="#fafafa" rx="4"/>
+                    
+                    <!-- Grid Lines -->
+                    <line x1="0" y1="100" x2="300" y2="100" stroke="#eee" stroke-width="1"/>
+                    <line x1="150" y1="0" x2="150" y2="200" stroke="#eee" stroke-width="1"/>
+                    
+                    <!-- Axes -->
+                    <text x="150" y="195" fill="#888" font-size="10" font-family="monospace" text-anchor="middle">Temperature</text>
+                    <text x="10" y="100" fill="#888" font-size="10" font-family="monospace" transform="rotate(-90 10 100)" text-anchor="middle">Pressure</text>
+
+                    <!-- Interactive Dot -->
+                    <circle id="phaseCursor" cx="150" cy="100" r="5" fill="#ffffff" stroke="#B01A00" stroke-width="2" style="pointer-events: none;"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="section-title">Environment</div>
+        
+        <div class="control-group">
+            <div class="control-label">
+                <span>Gravity</span>
+                <span id="valGravity" style="color: var(--color-text-muted);">0.0</span>
+            </div>
+            <input type="range" id="sliderGravity" min="0.0" max="100.0" step="1.0" value="0.0">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Pulls molecules downwards (disabled in Periodic Space).</div>
+        </div>
+
+        <div class="toggle-group">
+            <span class="toggle-label">Periodic Space</span>
+            <div class="toggle-switch" id="togglePeriodic"></div>
+        </div>
+
+        <div class="toggle-group">
+            <span class="toggle-label">Show H-Bonds</span>
+            <div class="toggle-switch active" id="toggleHBonds"></div>
+        </div>
+
+        <div class="section-title">Intermolecular Forces</div>
+        
+        <div class="control-group">
+            <div class="control-label">
+                <span>Lennard-Jones (Epsilon)</span>
+                <span id="valLJ" style="color: var(--color-accent);">600</span>
+            </div>
+            <input type="range" id="sliderLJ" min="0" max="1500" step="50" value="600">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Depth of the Van der Waals attractive well.</div>
+        </div>
+        
+        <div class="control-group" style="margin-top: 16px;">
+            <div class="control-label">
+                <span>Lennard-Jones (Sigma)</span>
+                <span id="valLJ_Sigma" style="color: var(--color-accent);">24.0</span>
+            </div>
+            <input type="range" id="sliderLJ_Sigma" min="10" max="40" step="1" value="24.0">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Effective diameter of particle volume exclusion.</div>
+        </div>
+
+        <div class="control-group" style="margin-top: 16px;">
+            <div class="control-label">
+                <span>Coulomb Electrostatics</span>
+                <span id="valCoulomb" style="color: var(--color-accent);">1.0</span>
+            </div>
+            <input type="range" id="sliderCoulomb" min="0.0" max="10.0" step="0.1" value="1.0">
+            <div style="font-size: 0.65rem; color: #888; line-height: 1.2;">Multiplier for the partial charge attraction causing H-Bonds.</div>
+        </div>
+        
+        <div class="control-group" style="margin-top: 16px;">
+            <div class="control-label" style="margin-bottom: 4px;">
+                <span>Interaction Potential (O-O pair)</span>
+            </div>
+            <div style="width: 100%; height: 140px; background: #fafafa; border: 1px solid var(--color-border); border-radius: 4px;">
+                <svg id="svgPotential" viewBox="0 -100 200 140" style="width: 100%; height: 100%; overflow: hidden; margin-left: -5px;">
+                    <line x1="0" y1="0" x2="200" y2="0" stroke="#ccc" stroke-width="1" stroke-dasharray="2"/>
+                    <line x1="10" y1="-100" x2="10" y2="40" stroke="#ccc" stroke-width="1"/>
+                    <path id="pathPotential" fill="none" stroke="#B01A00" stroke-width="2"/>
+                    <text x="175" y="15" fill="#888" font-size="10" font-family="monospace">r</text>
+                    <text x="15" y="-85" fill="#888" font-size="10" font-family="monospace">Energy (V)</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Controls moved to header -->
+
+        <div style="flex:1"></div>
+
+        <div style="margin-top: 24px; padding: 16px; background: #ffffff; border-radius: 4px; border: 1px solid #e0e0e0;">
+            <p style="font-size: 0.75rem; color: #333; line-height: 1.5; margin: 0;">
+                <strong>Simulation Mechanics:</strong><br>
+                This employs an authentic real-time Molecular Dynamics integrator (Velocity Verlet).<br><br>
+                <strong>Intramolecular:</strong> Stiff harmonic springs uphold covalent O-H bonds (~1Å) and H-O-H angles (104.5°).<br><br>
+                <strong>Intermolecular:</strong> Particles interact via Coulombic electrostatics (simulating polarity gradients) and Lennard-Jones core repulsion (volume exclusion).<br><br>
+                <strong>Hydrogen Bonds:</strong> Electrostatics naturally cause O (neg) and H (pos) to form structural networks (ice lattices) at lower kinetic temperatures!
+            </p>
+        </div>
+    </aside>
+
+    <main class="plots-wrapper">
+        <div class="plot-container">
+            <div class="plot-label">H2O LENNARD-JONES & COULOMB</div>
+            <div class="plot-info-overlay">
+                ENERGY: <span id="valEnergy">0</span> &nbsp;|&nbsp; SIM TIME: <span id="valTime">0.0</span> ps
+            </div>
+            <div style="flex: 1; width: 100%; height: 100%; position: relative;">
+                <canvas id="simCanvas"></canvas>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- UI Controls ---
+    const valT = document.getElementById('valT');
+    const sliderT = document.getElementById('sliderT');
+    const valP = document.getElementById('valP');
+    const sliderP = document.getElementById('sliderP');
+    const valTime = document.getElementById('valTime');
+    const valEnergy = document.getElementById('valEnergy');
+    const valGravity = document.getElementById('valGravity');
+    const sliderGravity = document.getElementById('sliderGravity');
+    const togglePeriodic = document.getElementById('togglePeriodic');
+    const toggleHBonds = document.getElementById('toggleHBonds');
+    const canvas = document.getElementById('simCanvas');
+
+    // --- Three.js WebGL Setup ---
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#ffffff');
+    const camera = new THREE.PerspectiveCamera(45, 1, 1, 10000);
+    camera.position.set(0, 0, 800);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(1000, 1000, 1000);
+    scene.add(dirLight);
+
+    // Box Helper
+    const boxGroup = new THREE.Group();
+    scene.add(boxGroup);
+    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    const boxEdges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(boxGeo),
+        new THREE.LineBasicMaterial({ color: 0x555555 })
+    );
+    boxGroup.add(boxEdges);
+
+    // Shared Geometries Materials
+    const matO = new THREE.MeshToonMaterial({ color: 0xB01A00 });
+    const matH = new THREE.MeshToonMaterial({ color: 0xcccccc });
+    const geoSphere = new THREE.SphereGeometry(1, 16, 16);
+    
+    // Dynamic Bonds rendering
+    const bondsGeo = new THREE.BufferGeometry();
+    const bondsMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, linewidth: 2 });
+    const bondsMesh = new THREE.LineSegments(bondsGeo, bondsMat);
+    scene.add(bondsMesh);
+    
+    // H-Bonds rendering
+    const hBondsGeo = new THREE.BufferGeometry();
+    const hBondsMat = new THREE.LineBasicMaterial({ color: 0xB01A00, transparent: true, opacity: 0.4, linewidth: 3 });
+    const hBondsMesh = new THREE.LineSegments(hBondsGeo, hBondsMat);
+    scene.add(hBondsMesh);
+
+    const btnReset = document.getElementById('btnReset');
+    const valLJ = document.getElementById('valLJ');
+    const sliderLJ = document.getElementById('sliderLJ');
+    const valLJ_Sigma = document.getElementById('valLJ_Sigma');
+    const sliderLJ_Sigma = document.getElementById('sliderLJ_Sigma');
+    const valCoulomb = document.getElementById('valCoulomb');
+    const sliderCoulomb = document.getElementById('sliderCoulomb');
+    const valMolecules = document.getElementById('valMolecules');
+    const sliderMolecules = document.getElementById('sliderMolecules');
+    const pathPotential = document.getElementById('pathPotential');
+    const svgPhase = document.getElementById('svgPhase');
+    const phaseCursor = document.getElementById('phaseCursor');
+
+    let targetTemp = 150;
+    let boxScale = 1.0;
+    let gravityForce = 0.0;
+    let periodicEnabled = false;
+    let showHBonds = true;
+    let numMolecules = 100;
+    
+    // Dynamics parameters made mutable by sliders
+    let epsilonOO = 600.0;
+    let sigmaOO = 24.0;
+    let coulombScale = 1.0;
+    
+    // Phase diagram map bounds mapping to sliders
+    const P_VISUAL_MIN = 0.2; // High real pressure (small box scale) = Top of SVG (Y=0)
+    const P_VISUAL_MAX = 2.0; // Low real pressure (large box scale) = Bottom of SVG (Y=200)
+    const T_VISUAL_MIN = 1;
+    const T_VISUAL_MAX = 600;
+
+    function updatePhaseCursor() {
+        // T maps left to right (0 to 300)
+        let cx = ((targetTemp - T_VISUAL_MIN) / (T_VISUAL_MAX - T_VISUAL_MIN)) * 300;
+        // P maps bottom to top (Large BoxScale = Low P = Y=200)
+        let cy = ((boxScale - P_VISUAL_MIN) / (P_VISUAL_MAX - P_VISUAL_MIN)) * 200;
+        cx = Math.max(0, Math.min(300, cx));
+        cy = Math.max(0, Math.min(200, cy));
+        phaseCursor.setAttribute('cx', cx);
+        phaseCursor.setAttribute('cy', cy);
+    }
+
+    function handlePhaseInteraction(e) {
+        const pt = svgPhase.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        const svgP = pt.matrixTransform(svgPhase.getScreenCTM().inverse());
+        
+        // Map back to physics
+        let newT = (svgP.x / 300) * (T_VISUAL_MAX - T_VISUAL_MIN) + T_VISUAL_MIN;
+        let newP = (svgP.y / 200) * (P_VISUAL_MAX - P_VISUAL_MIN) + P_VISUAL_MIN;
+        
+        targetTemp = Math.max(T_VISUAL_MIN, Math.min(T_VISUAL_MAX, newT));
+        boxScale = Math.max(P_VISUAL_MIN, Math.min(P_VISUAL_MAX, newP));
+        
+        sliderT.value = targetTemp;
+        valT.textContent = Math.round(targetTemp);
+        sliderP.value = boxScale;
+        valP.textContent = boxScale.toFixed(2);
+        
+        updatePhaseCursor();
+    }
+
+    let isDraggingPhase = false;
+    svgPhase.addEventListener('mousedown', (e) => { isDraggingPhase = true; handlePhaseInteraction(e); });
+    window.addEventListener('mousemove', (e) => { if (isDraggingPhase) handlePhaseInteraction(e); });
+    window.addEventListener('mouseup', () => { isDraggingPhase = false; });
+
+    sliderT.addEventListener('input', e => { targetTemp = parseFloat(e.target.value); valT.textContent = targetTemp; updatePhaseCursor(); });
+    sliderP.addEventListener('input', e => { boxScale = parseFloat(e.target.value); valP.textContent = boxScale.toFixed(2); updatePhaseCursor(); });
+    sliderGravity.addEventListener('input', e => { gravityForce = parseFloat(e.target.value); valGravity.textContent = gravityForce.toFixed(1); });
+    
+    togglePeriodic.addEventListener('click', () => { 
+        periodicEnabled = !periodicEnabled; 
+        togglePeriodic.classList.toggle('active', periodicEnabled);
+        
+        // Disable Gravity visually if Periodic is active
+        if (periodicEnabled) {
+            sliderGravity.parentElement.style.opacity = '0.4';
+            sliderGravity.disabled = true;
+        } else {
+            sliderGravity.parentElement.style.opacity = '1.0';
+            sliderGravity.disabled = false;
+        }
+        resetSim(); // Essential to recalculate grid and bounds cleanly
+    });
+    toggleHBonds.addEventListener('click', () => { 
+        showHBonds = !showHBonds; 
+        toggleHBonds.classList.toggle('active', showHBonds);
+    });
+
+    sliderLJ.addEventListener('input', e => { epsilonOO = parseFloat(e.target.value); valLJ.textContent = epsilonOO; updatePotentialCurve(); });
+    sliderLJ_Sigma.addEventListener('input', e => { sigmaOO = parseFloat(e.target.value); valLJ_Sigma.textContent = sigmaOO.toFixed(1); updatePotentialCurve(); });
+    sliderCoulomb.addEventListener('input', e => { coulombScale = parseFloat(e.target.value); valCoulomb.textContent = coulombScale.toFixed(1); updatePotentialCurve(); });
+    sliderMolecules.addEventListener('input', e => { 
+        numMolecules = parseInt(e.target.value); 
+        valMolecules.textContent = numMolecules;
+        resetSim();
+    });
+
+    // --- Core MD Physics Parameters ---
+    // Scaled for a 2D visual representation. We will map 1 distance unit roughly to 0.1 Angstroms.
+    const MASS_O = 16.0;
+    const MASS_H = 1.0;
+    
+    // Partial Charges mapped for 2D visual scaling stability (pseudo-k_e embedded)
+    const BASE_CHARGE_O = -0.834 * 8.0; 
+    const BASE_CHARGE_H = 0.417 * 8.0;
+
+    const R_OH = 10.0; // Distance O-H in px
+    const R_HH = 15.8; // Distance H-H in px (maintains ~104.5 deg angle)
+    
+    const K_BOND = 1500.0;     // Harmonic spring constant for rigid covalent bonds
+    
+    // Lennard-Jones parameters to provide core repulsion to Coulombic collapse
+    // O-O creates the water molecule physical volume (now slider-controlled via sigmaOO and epsilonOO)
+    const EPSILON_GENERIC = 200.0; 
+    const SIGMA_GENERIC = 8.0; 
+
+    // Simulation bounds
+    let baseBoxSize = 400; 
+    let dt = 0.002;         // integration time step
+    let stepsPerFrame = 20; // MD iterations per render frame
+    let simTime = 0;
+
+    // --- Data Structures ---
+    class Atom {
+        constructor(id, molId, type, x, y, z) {
+            this.id = id;
+            this.molId = molId;
+            this.type = type; // 'O' or 'H'
+            
+            this.x = x; this.y = y; this.z = z;
+            // Initialize with some random velocity
+            this.vx = (Math.random()-0.5)*20; 
+            this.vy = (Math.random()-0.5)*20;
+            this.vz = (Math.random()-0.5)*20;
+            
+            // Forces
+            this.fx = 0; this.fy = 0; this.fz = 0;
+            
+            if (type === 'O') {
+                this.mass = MASS_O;
+                this.baseQ = BASE_CHARGE_O;
+                this.radius = 7;
+                this.mesh = new THREE.Mesh(geoSphere, matO);
+            } else {
+                this.mass = MASS_H;
+                this.baseQ = BASE_CHARGE_H;
+                this.radius = 4;
+                this.mesh = new THREE.Mesh(geoSphere, matH);
+            }
+            this.mesh.scale.set(this.radius, this.radius, this.radius);
+            this.mesh.position.set(this.x, this.y, this.z);
+            scene.add(this.mesh);
+        }
+        
+        get q() {
+            return this.baseQ * coulombScale;
+        }
+    }
+
+    class Molecule {
+        constructor(id, x, y, z) {
+            this.id = id;
+            this.atoms = [];
+            
+            // Random 3D rotation
+            let qRotation = new THREE.Quaternion().setFromEuler(
+                new THREE.Euler(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2)
+            );
+            
+            let vH1 = new THREE.Vector3(R_OH, 0, 0).applyQuaternion(qRotation);
+            let orthogonal = new THREE.Vector3(0, 1, 0).applyQuaternion(qRotation);
+            let vH2 = vH1.clone().applyAxisAngle(orthogonal, 104.5 * Math.PI / 180);
+            
+            this.O = new Atom(id*3, id, 'O', x, y, z);
+            this.H1 = new Atom(id*3+1, id, 'H', x + vH1.x, y + vH1.y, z + vH1.z);
+            this.H2 = new Atom(id*3+2, id, 'H', x + vH2.x, y + vH2.y, z + vH2.z);
+            
+            this.atoms.push(this.O, this.H1, this.H2);
+        }
+    }
+
+    let molecules = [];
+    let atoms = [];
+
+    // Precomputed squares for generic pairs
+    const sigmaGen_sq = SIGMA_GENERIC * SIGMA_GENERIC;
+    
+    // We only compute Intermolecular forces within a local cutoff radius:
+    // This scales with Sigma dynamically
+    const cutoffRadius = Math.max(40.0 * 2.5, 60.0);
+    const cutoff_sq = cutoffRadius * cutoffRadius;
+
+    let hBondsToDraw = []; // Visually store identified H-Bonds computed in the force loop
+
+    function applyForces() {
+        let potEnergy = 0.0;
+        
+        // 1. Reset forces and apply gravity
+        let currentGravity = periodicEnabled ? 0.0 : gravityForce; 
+        for (let i = 0; i < atoms.length; i++) {
+            atoms[i].fx = 0;
+            atoms[i].fy = atoms[i].mass * (-currentGravity); // Pull DOWN (-Y) in Three.js
+            atoms[i].fz = 0;
+            potEnergy += atoms[i].mass * currentGravity * atoms[i].y; // GPE (U = m*g*h)
+        }
+
+        let actualBox = baseBoxSize * boxScale;
+
+        // 2. Intramolecular forces (Harmonic Springs maintaining the H2O shape)
+        for (let m = 0; m < molecules.length; m++) {
+            let mol = molecules[m];
+            
+            // Local function to apply spring between two atoms
+            let applySpring = (a1, a2, targetL) => {
+                let dx = a1.x - a2.x;
+                let dy = a1.y - a2.y;
+                let dz = a1.z - a2.z;
+                
+                // CRUCIAL: Intramolecular minimum image convention so bonds don't rip
+                if (periodicEnabled) {
+                    dx -= actualBox * Math.round(dx / actualBox);
+                    dy -= actualBox * Math.round(dy / actualBox);
+                    dz -= actualBox * Math.round(dz / actualBox);
+                }
+                
+                let r2 = dx*dx + dy*dy + dz*dz;
+                let r = Math.sqrt(r2);
+                if (r < 0.001) return;
+                
+                let diff = r - targetL;
+                potEnergy += 0.5 * K_BOND * diff * diff; // Elastic PE
+                
+                // Force magnitude
+                let force = -K_BOND * diff;
+                
+                // Vector Force
+                let fx = (force / r) * dx;
+                let fy = (force / r) * dy;
+                let fz = (force / r) * dz;
+                
+                a1.fx += fx; a1.fy += fy; a1.fz += fz;
+                a2.fx -= fx; a2.fy -= fy; a2.fz -= fz;
+            };
+
+            applySpring(mol.O, mol.H1, R_OH);
+            applySpring(mol.O, mol.H2, R_OH);
+            applySpring(mol.H1, mol.H2, R_HH); // Rigid triangle maintains 104.5 angle
+        }
+
+        // 3. Intermolecular Forces (Spatial Hashing for N*N optimization)
+        let cSize = cutoffRadius; // Hash cells scaled to interaction cutoff
+        let gw = Math.ceil(actualBox / cSize) + (periodicEnabled ? 0 : 2); 
+        // Force minimum grid dimensions to prevent degenerate wrapping referencing itself
+        gw = Math.max(3, gw);
+        let gh = gw; 
+        let gd = gw;
+        
+        let cells = new Array(gw * gh * gd);
+        for(let i=0; i<cells.length; i++) cells[i] = [];
+
+        // Distribute atoms into hash cells
+        for (let i = 0; i < atoms.length; i++) {
+            let a = atoms[i];
+            let cx = Math.floor((a.x + actualBox/2) / cSize) + (periodicEnabled ? 0 : 1);
+            let cy = Math.floor((a.y + actualBox/2) / cSize) + (periodicEnabled ? 0 : 1);
+            let cz = Math.floor((a.z + actualBox/2) / cSize) + (periodicEnabled ? 0 : 1);
+            
+            if (periodicEnabled) {
+                cx = (cx % gw + gw) % gw;
+                cy = (cy % gh + gh) % gh;
+                cz = (cz % gd + gd) % gd;
+            } else {
+                if (cx < 0) cx = 0; if (cx >= gw) cx = gw - 1;
+                if (cy < 0) cy = 0; if (cy >= gh) cy = gh - 1;
+                if (cz < 0) cz = 0; if (cz >= gd) cz = gd - 1;
+            }
+            cells[cx + cy * gw + cz * gw * gh].push(a);
+        }
+
+        hBondsToDraw.length = 0;
+
+        // Compute neighbor forces
+        for (let cx = (periodicEnabled?0:1); cx < (periodicEnabled?gw:gw-1); cx++) {
+          for (let cy = (periodicEnabled?0:1); cy < (periodicEnabled?gh:gh-1); cy++) {
+            for (let cz = (periodicEnabled?0:1); cz < (periodicEnabled?gd:gd-1); cz++) {
+                let cellAtoms = cells[cx + cy * gw + cz * gw * gh];
+                if (cellAtoms.length === 0) continue;
+
+                // Check 27 neighbor cells
+                for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                  for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                    for (let nz = cz - 1; nz <= cz + 1; nz++) {
+                        let cellX = nx;
+                        let cellY = ny;
+                        let cellZ = nz;
+                        
+                        // Wrap neighboring cells safely
+                        if (periodicEnabled) {
+                            cellX = (nx % gw + gw) % gw;
+                            cellY = (ny % gh + gh) % gh;
+                            cellZ = (nz % gd + gd) % gd;
+                        } else {
+                            if (cellX < 0 || cellX >= gw || cellY < 0 || cellY >= gh || cellZ < 0 || cellZ >= gd) continue;
+                        }
+
+                        let neighborCell = cells[cellX + cellY * gw + cellZ * gw * gh];
+                        
+                        for (let i = 0; i < cellAtoms.length; i++) {
+                            let a1 = cellAtoms[i];
+                            
+                            for (let j = 0; j < neighborCell.length; j++) {
+                                let a2 = neighborCell[j];
+                                
+                                // Prevent double calculation and self-molecule calculation
+                                if (a1.id >= a2.id) continue;
+                                if (a1.molId === a2.molId) continue;
+                                
+                                // Periodic Minimum Image Distance
+                                let dx = a1.x - a2.x;
+                                let dy = a1.y - a2.y;
+                                let dz = a1.z - a2.z;
+                                
+                                if (periodicEnabled) {
+                                    dx -= actualBox * Math.round(dx / actualBox);
+                                    dy -= actualBox * Math.round(dy / actualBox);
+                                    dz -= actualBox * Math.round(dz / actualBox);
+                                }
+                                
+                                let r2 = dx*dx + dy*dy + dz*dz;
+                                
+                                // Spatial cutoff check
+                                if (r2 < cutoff_sq && r2 > 0.001) {
+                                    let f_r = 0; // Force divided by r (F/r)
+
+                                    if (a1.type === 'O' && a2.type === 'O') {
+                                        let sigmaOO_sq = sigmaOO * sigmaOO;
+                                        let sr2 = sigmaOO_sq / r2;
+                                        let sr6 = sr2 * sr2 * sr2;
+                                        f_r += (24.0 * epsilonOO / r2) * (2.0 * sr6 * sr6 - sr6);
+                                        potEnergy += 4.0 * epsilonOO * (sr6 * sr6 - sr6);
+                                    } else {
+                                        let sr2 = sigmaGen_sq / r2;
+                                        let sr6 = sr2 * sr2 * sr2;
+                                        // Just raw repulsion for generic to prevent Coulomb fusion
+                                        f_r += (24.0 * EPSILON_GENERIC / r2) * (2.0 * sr6 * sr6);
+                                        potEnergy += 4.0 * EPSILON_GENERIC * (sr6 * sr6); 
+                                    }
+
+                                    // Coulomb Electrostatics
+                                    let r = Math.sqrt(r2);
+                                    let coulForce = (a1.q * a2.q) / (r2);
+                                    f_r += coulForce / r; 
+                                    potEnergy += (a1.q * a2.q) / r;
+
+                                    let fx = f_r * dx;
+                                    let fy = f_r * dy;
+                                    let fz = f_r * dz;
+
+                                    a1.fx += fx; a1.fy += fy; a1.fz += fz;
+                                    a2.fx -= fx; a2.fy -= fy; a2.fz -= fz;
+
+                                    // Visual check for H-Bonds
+                                    if (showHBonds) {
+                                        if ((a1.type === 'O' && a2.type === 'H') || (a1.type === 'H' && a2.type === 'O')) {
+                                            if (r2 < (sigmaOO * sigmaOO)) { 
+                                                // Handle Periodic wrap drawing logic
+                                                let rawDx = a1.x - a2.x;
+                                                let rawDy = a1.y - a2.y;
+                                                let rawDz = a1.z - a2.z;
+                                                
+                                                if (periodicEnabled && (Math.abs(rawDx) > actualBox/2 || Math.abs(rawDy) > actualBox/2 || Math.abs(rawDz) > actualBox/2)) {
+                                                    // Offset a2 to its virtual un-wrapped position relative to a1
+                                                    let virtX2 = a2.x; let virtY2 = a2.y; let virtZ2 = a2.z;
+                                                    if (rawDx > actualBox / 2) virtX2 += actualBox;
+                                                    else if (rawDx < -actualBox / 2) virtX2 -= actualBox;
+                                                    
+                                                    if (rawDy > actualBox / 2) virtY2 += actualBox;
+                                                    else if (rawDy < -actualBox / 2) virtY2 -= actualBox;
+                                                    
+                                                    if (rawDz > actualBox / 2) virtZ2 += actualBox;
+                                                    else if (rawDz < -actualBox / 2) virtZ2 -= actualBox;
+                                                    
+                                                    // Segment 1 (a1 to virt a2)
+                                                    hBondsToDraw.push(a1.x, a1.y, a1.z, virtX2, virtY2, virtZ2);
+                                                    
+                                                    // Offset a1 to its virtual un-wrapped position relative to a2
+                                                    let virtX1 = a1.x; let virtY1 = a1.y; let virtZ1 = a1.z;
+                                                    if (rawDx > actualBox / 2) virtX1 -= actualBox;
+                                                    else if (rawDx < -actualBox / 2) virtX1 += actualBox;
+                                                    
+                                                    if (rawDy > actualBox / 2) virtY1 -= actualBox;
+                                                    else if (rawDy < -actualBox / 2) virtY1 += actualBox;
+                                                    
+                                                    if (rawDz > actualBox / 2) virtZ1 -= actualBox;
+                                                    else if (rawDz < -actualBox / 2) virtZ1 += actualBox;
+                                                    
+                                                    // Segment 2 (a2 to virt a1)
+                                                    hBondsToDraw.push(a2.x, a2.y, a2.z, virtX1, virtY1, virtZ1);
+                                                    
+                                                } else {
+                                                    // Normal internal drawing
+                                                    hBondsToDraw.push(a1.x, a1.y, a1.z, a2.x, a2.y, a2.z);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                  }
+                }
+            }
+          }
+        }
+
+        // 4. Bounding Box (Pressure/Walls)
+        let halfBox = actualBox / 2;
+        if (!periodicEnabled) {
+            let wallK = 2000.0; // Wall stiffness mapping
+            for (let i = 0; i < atoms.length; i++) {
+                let a = atoms[i];
+                // Repulsive wall forces
+                if (a.x < -halfBox + a.radius) {
+                    let diff = -halfBox + a.radius - a.x;
+                    a.fx += wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vx *= 0.8; 
+                }
+                if (a.x >  halfBox - a.radius) {
+                    let diff = a.x - (halfBox - a.radius);
+                    a.fx -= wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vx *= 0.8;
+                }
+                if (a.y < -halfBox + a.radius) {
+                    let diff = -halfBox + a.radius - a.y;
+                    a.fy += wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vy *= 0.8;
+                }
+                if (a.y >  halfBox - a.radius) {
+                    let diff = a.y - (halfBox - a.radius);
+                    a.fy -= wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vy *= 0.8;
+                }
+                if (a.z < -halfBox + a.radius) {
+                    let diff = -halfBox + a.radius - a.z;
+                    a.fz += wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vz *= 0.8;
+                }
+                if (a.z >  halfBox - a.radius) {
+                    let diff = a.z - (halfBox - a.radius);
+                    a.fz -= wallK * diff;
+                    potEnergy += 0.5 * wallK * diff * diff;
+                    a.vz *= 0.8;
+                }
+            }
+        }
+        
+        return potEnergy;
+    }
+
+    function integrate(dt) {
+        // Velocity Verlet
+        let actualBox = baseBoxSize * boxScale;
+        let halfBox = actualBox / 2;
+        
+        for (let i = 0; i < atoms.length; i++) {
+            let a = atoms[i];
+            let ax = a.fx / a.mass;
+            let ay = a.fy / a.mass;
+            let az = a.fz / a.mass;
+            
+            a.vx += 0.5 * ax * dt;
+            a.vy += 0.5 * ay * dt;
+            a.vz += 0.5 * az * dt;
+            
+            a.x += a.vx * dt;
+            a.y += a.vy * dt;
+            a.z += a.vz * dt;
+        }
+
+        if (periodicEnabled) {
+            // Periodic wrap logic
+            for (let m = 0; m < molecules.length; m++) {
+                let mol = molecules[m];
+                let shiftX = 0;
+                let shiftY = 0;
+                let shiftZ = 0;
+                
+                if (mol.O.x < -halfBox) shiftX = actualBox;
+                if (mol.O.x >= halfBox) shiftX = -actualBox;
+                if (mol.O.y < -halfBox) shiftY = actualBox;
+                if (mol.O.y >= halfBox) shiftY = -actualBox;
+                if (mol.O.z < -halfBox) shiftZ = actualBox;
+                if (mol.O.z >= halfBox) shiftZ = -actualBox;
+                
+                if (shiftX !== 0 || shiftY !== 0 || shiftZ !== 0) {
+                    for (let n = 0; n < mol.atoms.length; n++) {
+                        mol.atoms[n].x += shiftX;
+                        mol.atoms[n].y += shiftY;
+                        mol.atoms[n].z += shiftZ;
+                    }
+                }
+            }
+        }
+
+        // 2. Re-evaluate Forces based on new positions r(t+dt)
+        let currentPotentialEnergy = applyForces();
+
+        // 3. Second half-step velocity
+        let currentKineticEnergy = 0;
+        let ndof = atoms.length * 3 - 3.0; // 3D Translational degrees of freedom
+
+        for (let i = 0; i < atoms.length; i++) {
+            let a = atoms[i];
+            let ax = a.fx / a.mass;
+            let ay = a.fy / a.mass;
+            let az = a.fz / a.mass;
+            
+            a.vx += 0.5 * ax * dt;
+            a.vy += 0.5 * ay * dt;
+            a.vz += 0.5 * az * dt;
+
+            // Optional velocity safety cap
+            let vsq = a.vx*a.vx + a.vy*a.vy + a.vz*a.vz;
+            if (vsq > 500000) {
+                let v = Math.sqrt(vsq);
+                a.vx = (a.vx/v) * 707;
+                a.vy = (a.vy/v) * 707;
+                a.vz = (a.vz/v) * 707;
+            }
+
+            currentKineticEnergy += 0.5 * a.mass * vsq;
+        }
+
+        // 4. Thermostat (Berendsen Velocity Rescaling)
+        let currentTemp = currentKineticEnergy / ndof;
+        let tTarget = targetTemp * 5.0; 
+        
+        let tau = 0.05; // Coupling time constant
+        let lambda = Math.sqrt(1.0 + (dt / tau) * ((tTarget / Math.max(1.0, currentTemp)) - 1.0));
+        
+        // Safety cap on lambda
+        if (lambda > 1.05) lambda = 1.05;
+        if (lambda < 0.95) lambda = 0.95;
+
+        for (let i = 0; i < atoms.length; i++) {
+            atoms[i].vx *= lambda;
+            atoms[i].vy *= lambda;
+            atoms[i].vz *= lambda;
+        }
+        
+        return { kinetic: currentKineticEnergy, potential: currentPotentialEnergy };
+    }
+
+    function resizeBox() {
+        if (!canvas.parentElement) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        
+        let dpr = window.devicePixelRatio || 1;
+        renderer.setSize(rect.width, rect.height);
+        renderer.setPixelRatio(dpr);
+        
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resizeBox);
+
+    function resetSim() {
+        for (let a of atoms) scene.remove(a.mesh);
+        atoms = [];
+        molecules = [];
+        
+        // Arrange molecules in a 3D grid
+        let cols = Math.ceil(Math.cbrt(numMolecules));
+        let rows = Math.ceil(Math.sqrt(numMolecules / cols)) || 1;
+        let layers = Math.ceil(numMolecules / (cols * rows)) || 1;
+        let spacing = 32.0;
+        
+        // Start centered
+        let totalW = cols * spacing;
+        let totalH = rows * spacing;
+        let totalD = layers * spacing;
+        
+        let startX = -totalW/2 + spacing/2;
+        let startY = -totalH/2 + spacing/2;
+        let startZ = -totalD/2 + spacing/2;
+
+        let idCounter = 0;
+        for (let l = 0; l < layers; l++) {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (molecules.length >= numMolecules) break;
+                    let nx = startX + c * spacing + (Math.random()-0.5)*10;
+                    let ny = startY + r * spacing + (Math.random()-0.5)*10;
+                    let nz = startZ + l * spacing + (Math.random()-0.5)*10;
+                    
+                    let m = new Molecule(idCounter++, nx, ny, nz);
+                    molecules.push(m);
+                    atoms.push(...m.atoms);
+                }
+            }
+        }
+        
+        simTime = 0;
+        btnReset.classList.remove('pulse-alert');
+        applyForces(); // calculate initial forces for verlet
+    }
+    
+    function resetDefaults() {
+        sliderT.value = 150; sliderP.value = 1.0; sliderGravity.value = 0.0;
+        sliderLJ.value = 600;
+        sliderLJ_Sigma.value = 24.0;
+        sliderCoulomb.value = 1.0;
+        sliderMolecules.value = 100;
+        
+        sliderT.dispatchEvent(new Event('input'));
+        sliderP.dispatchEvent(new Event('input'));
+        sliderGravity.dispatchEvent(new Event('input'));
+        sliderLJ.dispatchEvent(new Event('input'));
+        sliderLJ_Sigma.dispatchEvent(new Event('input'));
+        sliderCoulomb.dispatchEvent(new Event('input'));
+        sliderMolecules.dispatchEvent(new Event('input'));
+        
+        if (periodicEnabled) togglePeriodic.click();
+        resetSim();
+    }
+    
+    function updatePotentialCurve() {
+        // Plot V(r) = LJ(r) + Coulomb(r)
+        // Oxygen-Oxygen interaction clearly shows both the repulsive Coulomb barrier and deep LJ attractive well
+        let pathD = "";
+        let isFirst = true;
+        let scaleV = 0.05; // Restored scale for legibility 
+        
+        for (let r = 10.0; r < 80; r += 0.5) {
+            let r2 = r*r;
+            // LJ O-O
+            let sr2 = (sigmaOO * sigmaOO) / r2;
+            let sr6 = sr2 * sr2 * sr2;
+            let vLJ = 4.0 * epsilonOO * (sr6 * sr6 - sr6);
+            
+            // Coulomb O-O
+            let qO = BASE_CHARGE_O * coulombScale;
+            let vCoulomb = (qO * qO) / r;
+
+            let vTotal = vLJ + vCoulomb;
+            
+            let svgX = 10 + (r - 10) * 2.7; // map r=10..80 to x=10..200
+            let svgY = -vTotal * scaleV;
+            
+            // Limit Y slightly outside the frame to allow CSS overlay: hidden to perfectly cut it without building a flat ceiling cap
+            svgY = Math.min(150, Math.max(-105, svgY));
+            
+            if (isFirst) {
+                pathD += `M ${svgX} ${svgY} `;
+                isFirst = false;
+            } else {
+                pathD += `L ${svgX} ${svgY} `;
+            }
+        }
+        pathPotential.setAttribute('d', pathD);
+    }
+
+    function render() {
+        let actualBox = baseBoxSize * boxScale;
+        
+        // Update Box Helper
+        boxGroup.scale.set(actualBox, actualBox, actualBox);
+
+        // Update Atom Mesh Positions
+        for (let i = 0; i < atoms.length; i++) {
+            let a = atoms[i];
+            a.mesh.position.set(a.x, a.y, a.z);
+        }
+
+        // Update Covalent Bonds Geometry
+        let cBondsArray = [];
+        let pushBond = (x1, y1, z1, x2, y2, z2) => {
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            let dz = z2 - z1;
+            if (periodicEnabled && (Math.abs(dx) > actualBox/2 || Math.abs(dy) > actualBox/2 || Math.abs(dz) > actualBox/2)) {
+                let virtX2 = x2, virtY2 = y2, virtZ2 = z2;
+                if (dx > actualBox / 2) virtX2 -= actualBox; else if (dx < -actualBox / 2) virtX2 += actualBox;
+                if (dy > actualBox / 2) virtY2 -= actualBox; else if (dy < -actualBox / 2) virtY2 += actualBox;
+                if (dz > actualBox / 2) virtZ2 -= actualBox; else if (dz < -actualBox / 2) virtZ2 += actualBox;
+                cBondsArray.push(x1, y1, z1, virtX2, virtY2, virtZ2);
+                
+                let virtX1 = x1, virtY1 = y1, virtZ1 = z1;
+                if (dx > actualBox / 2) virtX1 += actualBox; else if (dx < -actualBox / 2) virtX1 -= actualBox;
+                if (dy > actualBox / 2) virtY1 += actualBox; else if (dy < -actualBox / 2) virtY1 -= actualBox;
+                if (dz > actualBox / 2) virtZ1 += actualBox; else if (dz < -actualBox / 2) virtZ1 -= actualBox;
+                cBondsArray.push(x2, y2, z2, virtX1, virtY1, virtZ1);
+            } else {
+                cBondsArray.push(x1, y1, z1, x2, y2, z2);
+            }
+        };
+
+        for (let m=0; m < molecules.length; m++) {
+            let mol = molecules[m];
+            pushBond(mol.O.x, mol.O.y, mol.O.z, mol.H1.x, mol.H1.y, mol.H1.z);
+            pushBond(mol.O.x, mol.O.y, mol.O.z, mol.H2.x, mol.H2.y, mol.H2.z);
+        }
+        bondsGeo.setAttribute('position', new THREE.Float32BufferAttribute(cBondsArray, 3));
+
+        // Update Dynamic H-Bonds Geometry
+        if (showHBonds && hBondsToDraw.length > 0) {
+            hBondsGeo.setAttribute('position', new THREE.Float32BufferAttribute(hBondsToDraw, 3));
+            hBondsMesh.visible = true;
+        } else {
+            hBondsMesh.visible = false;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    let lastUpdateTotalEnergy = 0;
+
+    function animate() {
+        let frameKinetic = 0;
+        let framePotential = 0;
+        
+        for (let i = 0; i < stepsPerFrame; i++) {
+            let energies = integrate(dt);
+            simTime += dt;
+            
+            if (i === stepsPerFrame - 1) { // Capture last step of frame
+                frameKinetic = energies.kinetic;
+                framePotential = energies.potential;
+            }
+        }
+        valTime.textContent = simTime.toFixed(1);
+        
+        // Pretty print energy in scientific notation if large
+        let totalEnergy = frameKinetic + framePotential;
+        valEnergy.textContent = totalEnergy.toExponential(2);
+        
+        // Pulse reset button if energy indicates simulation blew up by orders of magnitude relative to recent history
+        if (lastUpdateTotalEnergy !== 0 && Math.abs(totalEnergy) > 10000) {
+            if (Math.abs(totalEnergy) > Math.abs(lastUpdateTotalEnergy) * 100) {
+                btnReset.classList.add('pulse-alert');
+            } else if (Math.abs(totalEnergy) < 500000) {
+                btnReset.classList.remove('pulse-alert');
+            }
+        }
+        lastUpdateTotalEnergy = totalEnergy;
+
+        render();
+        requestAnimationFrame(animate);
+    }
+
+    // Init Sequence
+    resizeBox();
+    resetSim();
+    updatePhaseCursor();
+    updatePotentialCurve();
+    requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>

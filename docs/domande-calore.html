@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estrai Domande Elettrostatica</title>
+    <title>Domande Calore</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
@@ -573,6 +573,8 @@
             display: none;
         }
     </style>
+    
+    
 </head>
 <body>
     <div id="interactive-bg"></div>
@@ -581,7 +583,7 @@
     </button>
     <div class="container" id="main-container">
         <header>
-            <h1>Domande  di elettrostatica</h1>
+            <h1>Domande sul calore</h1>
             <p style="color: var(--text-secondary); margin-top: 0.5rem;">Generatore casuale di domande per la prova orale</p>
         </header>
 
@@ -646,7 +648,7 @@
         // State
         let questions = [];
         let stats = {};
-        const STORAGE_KEY = 'elettrostatica_stats';
+        const STORAGE_KEY = 'calore_stats';
 
         // Elements
         const pickBtn = document.getElementById('pick-btn');
@@ -689,8 +691,8 @@
             const y = e.clientY;
             
             // Update gradient center
-            bg.style.setProperty('--mouse-x', `${x}px`);
-            bg.style.setProperty('--mouse-y', `${y}px`);
+            bg.style.setProperty('--mouse-x', `{x}px`);
+            bg.style.setProperty('--mouse-y', `{y}px`);
 
             // Create liquid trail
             const now = Date.now();
@@ -703,8 +705,8 @@
         function createTrailDot(x, y) {
             const dot = document.createElement('div');
             dot.className = 'trail-dot';
-            dot.style.left = `${x}px`;
-            dot.style.top = `${y}px`;
+            dot.style.left = `{x}px`;
+            dot.style.top = `{y}px`;
             document.body.appendChild(dot);
             
             // Cleanup
@@ -772,27 +774,43 @@
 
         // Embedded Questions Data
         const QUESTIONS_DATA = `
-1. **{A}** Come si può generare un campo elettrico uniforme? Come varia il potenziale nella regione di spazio in cui il campo è uniforme? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
-2. **{A}** In quali condizioni il potenziale elettrico è costante? Come varia il campo in questo caso? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
-3. **{A}** Come varia il campo elettrico tra le piastre di un condensatore? Come varia il potenziale? Abbozza un disegno delle linee del campo e delle superfici equipotenziali.
-4. **{A}** Una piccola carica positiva viene posta in un punto dello spazio. Non vi è alcuna forza elettrica su di essa. Qual è il valore del campo elettrico in quel punto e come varia il potenziale in prossimità del punto? Significa che non ci sono cariche elettriche nelle vicinanze? Suggerisci una distribuzione di carica (due o più cariche) che produca un campo nullo in un punto nello spazio.
-5. **{A}** Qual è il segno delle cariche che generano il seguente campo? Disegna le superficie equipotenziali.
-    ![elettrostatica-1](../assets/elettrostatica-1.svg)
-6. **{A}** Disegna le linee del campo elettrico.
-    ![elettrostatica-2](../assets/elettrostatica-2.svg)
-7. **{A}** Qual è il segno delle cariche che generano il seguente campo? Disegna le superficie equipotenziali. 
-    ![elettrostatica-3](../assets/elettrostatica-3.svg)
-8. **{A}** Disegna il campo elettrico generato da due cariche positive e le superfici equipotenziali. Spiega in quali punti, se esistono, il campo è nullo, il potenziale è nullo, il campo è massimo, il potenziale è massimo.
-9. **{A}** Disegna il campo elettrico generato da due cariche di segno opposto e le superfici equipotenziali. Spiega in quali punti, se esistono, il campo è nullo, il potenziale è nullo, il campo è massimo, il potenziale è massimo.
-10. **{B}** Cosa succede quando un conduttore è posto in un campo elettrico esterno? Come puoi verificare la tua spiegazione?
-11. **{B}** Come si dispone la carica in eccesso su un conduttore? Per un conduttore carico, come variano, all'interno e all'esterno del conduttore, il campo e il potenziale?
-12. **{B}** Come si può proteggere un dispositivo elettronico da campi elettrici esterni? Perché gli smartphone con frame in alluminio presentano delle tacche in plastica sui bordi?
-13. **{B}** Ha senso affermare *"non c'è campo"* quando ci si trova in alta montagna? In una grotta? Perché?
-14. **{C}** Come si può costruire un condensatore? Come si carica e come si scarica? A cosa serve?
-15. **{C}** Da cosa dipende la capacità di un condensatore? Perché? Cosa succede se si collegano dei condensatori in serie? Se si collegano in parallelo?
-16. **{C}** Cosa succede quando un isolante è posto in un campo elettrico esterno? Cosa rappresenta la costante dielettrica?
-17. **{C}** Cosa sono i fulmini? Quando si verificano? Come ci si può proteggere dai fulmini?
-18. **{C}** Quando si possono osservare delle scariche elettriche? Perché a volte percepiamo una scossa quando tocchiamo i carrelli della spesa o delle maniglie metalliche? Perché queste scosse non sono particolarmente pericolose.
+1. **{A}** **[EE/F]** Suggerisci dei metodi pratici per determinare i calori specifici di diversi liquidi e solidi.
+2. **{A}** **[EE/F]** Suggerisci dei metodi pratici per misurare i calori di fusione e di evaporazione per il ghiaccio e l'acqua.
+3. **{A}** **[D+]** Hai una tazza di caffè caldo e un piccolo contenitore di latte a temperatura ambiente che hai intenzione di aggiungere al caffè. Devi aspettare 10 minuti prima di poter bere il caffè e vuoi che a quel momento sia il più caldo possibile, ti conviene aggiungere subito il latte e aspettare 10 minuti, oppure aspettare 10 minuti e aggiungere il latte alla fine? Spiega il motivo.
+4. **{A}** **[F]** La legge Q = c · m · Δ T è sempre valida? Spiega.
+5. **{A}** **[F+]** Un bollitore elettrico impiega circa 3 minuti per portare a ebollizione un litro d'acqua partendo dalla temperatura ambiente (20°C). Stima la potenza elettrica del bollitore, trascurando le dispersioni di calore verso l'ambiente.
+6. **{A}** **[EE/F]** Se mescoli 1 kg di acqua a 20°C con 1 kg di ferro a 80°C, la temperatura finale di equilibrio sarà esattamente 50°C (la media aritmetica)? Giustifica la risposta.
+7. **{B}** **[F+]** Se in una calda giornata estiva appoggi un piede nudo sul bordo in cemento rovente di una piscina e l'altro piede nudo su un tappetino in gomma adiacente (che si trova alla stessa temperatura del cemento), il cemento ti sembrerà più caldo. Perché?
+8. **{B}** **[F]** Perché, attraversando un viadotto stradale, si avvertono dei leggeri sobbalzi ad intervalli regolari?
+9. **{B}** **[PD+]** Perché, in inverno, solo la superficie dei laghi si congela? Spiega inoltre perché la temperatura sul fondo rimane tipicamente intorno ai 4°C anche se la superficie è ghiacciata a 0°C.
+10. **{B}** **[EE]** Per aprire un barattolo di vetro con il tappo di metallo incastrato, un trucco classico è quello di far scorrere dell'acqua calda solo sul coperchio. Perché questo metodo funziona.
+11. **{B}** **[EE]** I fili della corrente elettrica ad alta tensione tra due tralicci pendono in modo molto evidente durante le giornate estive, mentre appaiono più tesi in inverno. A quale principio fisico è dovuto questo fenomeno? Stima la variazione di lunghezza di un filo che collega due tralicci alla distanza di 300 metri.
+12. **{B}** **[F]** Se tocchi la maniglia di acciaio di una porta e poi la parte in legno della porta stessa, il metallo ti sembrerà molto più freddo, nonostante entrambi gli oggetti si trovino nella stessa stanza da ore e abbiano la stessa temperatura ambiente. Perché i tuoi sensi ti ingannano?
+13. **{B}** **[PD+]** Ricerca il funzionamento dei bimetalli e illustrane un'applicazione.
+14. **{C}** **[F+]** Spiega perché le finestre con doppi vetri aiutano a ridurre le dispersioni energetiche invernali in una casa. Nelle finestre moderne, nell'intercapedine tra i due vetri è solitamente introdotto un gas nobile, come l'argon o il krypton, perché?
+15. **{C}** **[AD]** Osserva l'ambiente che ti circonda. Formula delle raccomandazioni sui modi possibili per ridurre la perdita di energia dovuta al trasferimento di calore. Quali idee e principi fisici hai utilizzato per formulare queste raccomandazioni?
+16. **{C}** **[AD+]** Intendi progettare una serpentina elettrica riscaldata da montare appena al di sotto della superficie di una rampa (superficie 15 m²), in modo che riesca a sciogliere un sottile strato di ghiaccio in 15 minuti. Stima la potenza della serpentina.
+17. **{C}** **[EE/F]** Stima la potenza media umana.
+18. **{C}** **[F+]** Spiega perché le borse termiche utilizzate per il trasporto del cibo consegnato a domicilio presentano una superficie interna riflettente. Conosci altre applicazioni simili di pannelli riflettenti?
+19. **{C}** **[F+]** Perché le tute degli astronauti o le coperte termiche di emergenza sono spesso di colore argento o oro?
+20. **{D}** **[EE]** Un tuo amico dice: "Il calore sale". Sei d'accordo o in disaccordo? Se non sei d'accordo, cosa potresti dire al tuo amico per convincerlo della tua opinione?
+21. **{D}** **[EE/F]** Una patata nella quale sono stati infilati diversi chiodi cuoce più in fretta al forno rispetto a una patata simile ma senza chiodi. Spiega il motivo. Elenca le idee e i principi fisici che hai utilizzato per rispondere a questa domanda.
+22. **{D}** **[AD-]** È possibile far bollire l'acqua in un bicchiere di carta posizionando il bicchiere direttamente sopra la fiamma di una candela o di un becco di Bunsen (dimostrazione video). Spiega perché questo è possibile senza che il bicchiere si bruci bucandosi.
+23. **{D}** **[E]** Alcune case sono riscaldate da olio o acqua calda che circola attraverso i battiscopa. Un sistema di riscaldamento del genere viene solitamente posizionato vicino al pavimento. Perché?
+24. **{D}** **[PD]** A parità di temperatura ambiente, si scioglie più rapidamente un cubetto di ghiaccio posizionato su un blocco di alluminio oppure su un blocco di legno?  Spiega (dimostrazione video)
+25. **{D}** **[PD-]** Un _thermos_ (vaso di Dewar) è progettato per mantenere i liquidi caldi o freddi il più a lungo possibile. Spiega come le sue tre caratteristiche principali (l'intercapedine di vuoto tra le pareti, le pareti interne argentate a specchio e il tappo isolante) contribuiscono a isolare termicamente il contenuto del thermos.
+26. **{E}** **[F+]** La cantina usata da un contadino per conservare la frutta non è riscaldata. Per evitare che la frutta geli, il contadino posiziona un barile d'acqua all'interno della cantina. Spiega perché questo aiuta a prevenire il congelamento della frutta.
+27. **{E}** **[AD-]** Fornisci due motivi per cui soffiare su una zuppa o su un caffè caldi aiuta ad abbassarne la temperatura. Come potresti testare le tue spiegazioni?
+28. **{E}** **[PD-]** Esporre un dito inumidito al vento può aiutare a identificarne la direzione. Spiega perché.
+29. **{E}** **[PD]** Perché coprire un fusto di birra con degli asciugamani bagnati in una giornata calda aiuta a mantenere fresca la birra?
+30. **{E}** **[PD-]** Spiega perché i cani riescono a rinfrescarsi ansimando e gli umani sudando.
+31. **{E}** **[AD+]** Durante un passaggio di stato, si dice che l'energia fornita al corpo "serve a spezzare i legami chimici". Cosa significa esattamente?
+32. **{F}** **[E]** Perché un uovo impiega lo stesso tempo a cuocere in un'acqua che bolle appena rispetto a un'acqua che bolle in modo vigoroso?
+33. **{F}** **[EE]** Perché il cibo cuoce più velocemente in una pentola a pressione rispetto a una pentola normale senza coperchio?
+34. **{F}** **[F+]** Come è possibile far bollire l'acqua a temperatura ambiente?
+35. **{F}** **[PD]** È possibile che l'acqua coesista allo stato liquido, solido e gassoso? Spiega (dimostrazione video). Quali sono altri particolari stati della materia?
+36. **{F}** **[F]** Gli alpinisti che si accampano ad alta quota notano che l'acqua bolle a una temperatura sensibilmente inferiore rispetto ai 100°C del livello del mare. Spiega perché la diminuzione della pressione atmosferica altera il punto di ebollizione e come questo influisce sui tempi di cottura dei cibi (ad esempio, la pasta).
+37. **{F}** **[D]** Spiega il fenomeno del "rigelo": perché premendo un filo metallico teso sopra un cubetto di ghiaccio, il filo riesce ad attraversarlo senza dividerlo in due pezzi, lasciando il ghiaccio integro sopra di sé? Perché occorre utilizzare un filo metallico? Spiega perché questo fenomeno rende possibile il pattinaggio su ghiaccio. Spunto video.
 `;
 
         // Parse Markdown content
@@ -825,7 +843,7 @@
             if (currentQ) parsed.push(currentQ);
 
             questions = parsed;
-            console.log(`Loaded ${questions.length} questions.`);
+            console.log(`Loaded {questions.length} questions.`);
             
             if (questions.length === 0) {
                 showError("Nessuna domanda trovata nel file. Controlla il formato (es. '1. **{A}** Testo').");
@@ -872,14 +890,16 @@
             questionsDisplay.innerHTML = pair.map(q => `
                 <div class="question-card">
                     <div class="question-header">
-                        <span class="question-number">#${q.number}</span>
-                        <span class="question-group">Gruppo ${q.group}</span>
+                        <span class="question-number">#{q.number}</span>
+                        <span class="question-group">Gruppo {q.group}</span>
                     </div>
                     <div class="question-text">
-                        ${formatText(q.text)}
+                        {formatText(q.text)}
                     </div>
                 </div>
             `).join('');
+            
+
         }
 
         // Basic markdown formatting for the text
@@ -887,10 +907,10 @@
             // Convert **bold** to <b>, *italic* to <i>, `code` to <code>
             // Convert ![alt](src) to <img>
             return text
-                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
-                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                .replace(/\*(.*?)\*/g, '<i>$1</i>')
-                .replace(/`(.*?)`/g, '<code>$1</code>');
+                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="2" alt="1">')
+                .replace(/\*\*(.*?)\*\*/g, '<b>1</b>')
+                .replace(/\*(.*?)\*/g, '<i>1</i>')
+                .replace(/`(.*?)`/g, '<code>1</code>');
         }
 
         // Stats & LocalStorage
@@ -962,20 +982,20 @@
                 const group = question ? question.group : '?';
                 
                 return `
-                    <div class="hist-item" data-id="${num}">
+                    <div class="hist-item" data-id="{num}">
                         <div class="hist-bar-container">
                             <div class="hist-label">
-                                <span class="group-tag">${group}</span>
-                                <span style="font-weight:600">#${num}</span>
+                                <span class="group-tag">{group}</span>
+                                <span style="font-weight:600">#{num}</span>
                             </div>
-                            <div class="hist-bar-wrapper" onclick="toggleQuestionDetail(${num})">
-                                <div class="hist-bar" style="width: ${percentage}%">
-                                    ${count > 0 ? `<span class="hist-count">${count}</span>` : ''}
+                            <div class="hist-bar-wrapper" onclick="toggleQuestionDetail({num})">
+                                <div class="hist-bar" style="width: {percentage}%">
+                                    {count > 0 ? `<span class="hist-count">{count}</span>` : ''}
                                 </div>
                             </div>
                         </div>
-                        <div id="detail-${num}" class="hist-question-detail">
-                            ${question ? formatText(question.text) : 'Errore caricamento domanda.'}
+                        <div id="detail-{num}" class="hist-question-detail">
+                            {question ? formatText(question.text) : 'Errore caricamento domanda.'}
                         </div>
                     </div>
                 `;
@@ -983,13 +1003,13 @@
         }
 
         function toggleQuestionDetail(id) {
-            const detailEl = document.getElementById(`detail-${id}`);
+            const detailEl = document.getElementById(`detail-{id}`);
             // Close others? Optional. Let's keep others open for comparison if user wants.
             // Actually, usually accordion style is nice, but simple toggle is fine.
             
             // If we want to close others:
             document.querySelectorAll('.hist-question-detail.active').forEach(el => {
-                if (el.id !== `detail-${id}`) el.classList.remove('active');
+                if (el.id !== `detail-{id}`) el.classList.remove('active');
             });
 
             detailEl.classList.toggle('active');

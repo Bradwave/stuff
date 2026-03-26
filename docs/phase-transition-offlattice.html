@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Off-Lattice Phase Transition (Lennard-Jones)</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M25 25h50v50H25z' fill='%231484e6'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-panel: #ffffff;
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #555555;
+            --color-accent: #1484e6;
+            --color-border: #e0e0e0;
+            --font-mono: 'Space Mono', monospace;
+            --radius-md: 4px;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100dvh;
+            font-family: var(--font-mono);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            overflow: hidden; opacity: 1;
+        }
+
+        .material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+        .app-container { display: grid; grid-template-columns: 350px 1fr; width: 100%; height: 100%; }
+
+        .sidebar {
+            background-color: var(--color-bg-panel); border-right: 1px solid var(--color-border);
+            padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 10;
+        }
+        header h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; font-weight: 700; letter-spacing: -1px; }
+        header p { font-size: 0.85rem; color: var(--color-text-muted); margin: 0; }
+        .section-title {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-text-muted);
+            font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-top: 24px;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .control-label { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); display: flex; justify-content: space-between; }
+        
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 4px; background: var(--color-border); border-radius: 2px; outline: none; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--color-accent); cursor: pointer; transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        button {
+            background-color: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-main);
+            padding: 12px; border-radius: 4px; font-family: var(--font-mono); font-weight: 700; cursor: pointer;
+            transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.8rem;
+        }
+        button:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+        .plots-wrapper {
+            background-color: #ffffff; padding: 24px; display: flex; flex-direction: row; gap: 24px;
+            overflow: hidden; align-items: center; width: 100%;
+        }
+        .plot-container {
+            flex: 1; height: auto; max-width: 800px; max-height: 800px; aspect-ratio: 1 / 1; 
+            background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .plot-label {
+            position: absolute; top: 12px; left: 16px; font-size: 0.65rem; font-weight: 700; color: var(--color-text-muted);
+            background: rgba(255, 255, 255, 0.9); padding: 3px 8px; border-radius: 4px; z-index: 5; border: 1px solid var(--color-border); text-transform: uppercase;
+        }
+        .plot-info-overlay {
+            position: absolute; top: 12px; right: 16px; font-size: 0.7rem; font-weight: 700; color: var(--color-accent);
+            background: rgba(255, 255, 255, 0.9); padding: 3px 8px; border-radius: 4px; pointer-events: none; z-index: 5; border: 1px solid var(--color-border);
+        }
+        .canvas-wrapper { flex: 1; width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; padding: 20px;}
+        .diagram { width: 100%; height: 100%; display: block; cursor: crosshair; }
+        
+        #simCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block;
+        }
+
+        .phase-label { position: absolute; pointer-events: none; font-size: 11px; font-weight: bold; opacity: 0.7; letter-spacing: 1px; font-family: var(--font-mono); text-shadow: 1px 1px 0px white;}
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <header>
+            <h1>OFF-LATTICE</h1>
+            <p>Lennard-Jones Continuous Model</p>
+        </header>
+
+        <div class="section-title">Thermodynamics</div>
+        
+        <div class="control-group">
+            <div class="control-label">
+                <span>Temperature (T*)</span>
+                <span id="valT" style="color: var(--color-accent);">0.450</span>
+            </div>
+            <input type="range" id="sliderT" min="0.1" max="1.5" step="0.01" value="0.45">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Density (ρ*)</span>
+                <span id="valRho" style="color: var(--color-accent);">0.300</span>
+            </div>
+            <input type="range" id="sliderRho" min="0.02" max="0.9" step="0.01" value="0.30">
+        </div>
+
+        <button onclick="relax()" style="margin-top: 16px;">
+            <span class="material-symbols-outlined">restart_alt</span> RESET / RELAX
+        </button>
+
+        <div style="flex:1"></div>
+
+        <div style="margin-top: 24px; padding: 16px; background: #ffffff; border-radius: 4px; border: 1px solid #e0e0e0;">
+            <p style="font-size: 0.75rem; color: #333; line-height: 1.5; margin: 0;">
+                <strong>What is this?</strong><br>
+                Unlike the Lattice Gas, this is an <strong>Off-Lattice Monte Carlo</strong> simulation. Particles float freely in continuous space experiencing the real Lennard-Jones intermolecular forces (attraction at distance, repulsion when overlapping).<br><br>
+                <strong>The Phase Diagram:</strong> The diagram now represents mapping of Density (ρ*) to Temperature (T*). Setting the exact dot into the domains of gas-liquid coexistence will cause the system to physically separate into a dense floating droplet entirely surrounded by empty vacuum!<br><br>
+                <strong>Visual Color Scheme:</strong> Particles analyze their local spatial neighbors to guess their phase state:<br>
+                <span style="color:#b266ff; font-weight:bold;">Purple:</span> Solid-like (Hexagonal packed)<br>
+                <span style="color:#1484e6; font-weight:bold;">Blue:</span> Liquid-like (Dense fluid)<br>
+                <span style="color:#666666; font-weight:bold;">Grey:</span> Gas-like (Isolated)
+            </p>
+        </div>
+    </aside>
+
+    <main class="plots-wrapper">
+        <div class="plot-container">
+            <div class="plot-label">2D LENNARD-JONES PHASES</div>
+            <div class="canvas-wrapper">
+                <div style="position: relative; width: 100%; aspect-ratio: 1 / 1;">
+                    <svg class="diagram" id="diagram" viewBox="-40 -20 450 450" preserveAspectRatio="xMidYMid meet" style="position: absolute; width: 100%; height: 100%;">
+                        <!-- SVG paths populated dynamically -->
+                        
+                        <g id="regionsGroup"></g>
+                        
+                        <!-- Grid -->
+                        <line x1="0" y1="100" x2="400" y2="100" stroke="#f0f0f0" stroke-width="1"/>
+                        <line x1="0" y1="200" x2="400" y2="200" stroke="#f0f0f0" stroke-width="1"/>
+                        <line x1="0" y1="300" x2="400" y2="300" stroke="#f0f0f0" stroke-width="1"/>
+                        <line x1="100" y1="0" x2="100" y2="400" stroke="#f0f0f0" stroke-width="1"/>
+                        <line x1="200" y1="0" x2="200" y2="400" stroke="#f0f0f0" stroke-width="1"/>
+                        <line x1="300" y1="0" x2="300" y2="400" stroke="#f0f0f0" stroke-width="1"/>
+
+                        <!-- Axes -->
+                        <line x1="0" y1="400" x2="400" y2="400" stroke="#1a1a1a" stroke-width="3"/>
+                        <line x1="0" y1="400" x2="0" y2="0" stroke="#1a1a1a" stroke-width="3"/>
+
+                        <circle id="svgTriplePoint" cx="0" cy="0" r="4" fill="#1a1a1a" />
+                        <circle id="svgCriticalPoint" cx="0" cy="0" r="4" fill="#1484e6" />
+                        <text id="txtCritical" x="0" y="0" fill="#1484e6" font-size="10" font-weight="bold" text-anchor="middle">T_c</text>
+                        
+                        <!-- Labels -->
+                        <text x="200" y="425" fill="#555" font-size="14" font-weight="bold" text-anchor="middle">Density (ρ*)</text>
+                        <text x="-25" y="200" fill="#555" font-size="14" font-weight="bold" transform="rotate(-90 -25 200)" text-anchor="middle">Temperature (T*)</text>
+                        <text x="10" y="15" fill="#555" font-size="10">1.6</text>
+                        <text x="10" y="390" fill="#555" font-size="10">0.0</text>
+                        <text x="375" y="390" fill="#555" font-size="10">0.9</text>
+                        
+                        <!-- Interactive dot -->
+                        <circle id="cursor" cx="200" cy="200" r="8" fill="#ffffff" stroke="#1a1a1a" stroke-width="3" style="cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-label">MOLECULAR SIMULATION</div>
+            <div class="plot-info-overlay">N: <span id="valN">400</span> | E*: <span id="valEnergy">0.00</span></div>
+            <div class="canvas-wrapper">
+                <div style="position: relative; width: 100%; aspect-ratio: 1 / 1; border: 1px solid #1a1a1a;">
+                    <canvas id="simCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- UI and Setup ---
+    const svg = document.getElementById('diagram');
+    const cursor = document.getElementById('cursor');
+    const valT = document.getElementById('valT');
+    const valRho = document.getElementById('valRho');
+    const sliderT = document.getElementById('sliderT');
+    const sliderRho = document.getElementById('sliderRho');
+    const valEnergy = document.getElementById('valEnergy');
+    const regionsGroup = document.getElementById('regionsGroup');
+    
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // Thermodynamics
+    let T = 0.45;     // Dimensionless Temperature T* = kT / epsilon
+    let Rho = 0.3;    // Dimensionless Density rho* = N * sigma^2 / V
+    
+    // SVG Settings
+    const MAP_X_MIN = 0; const MAP_X_MAX = 400;
+    const MAP_Y_MIN = 0; const MAP_Y_MAX = 400;
+    const VISUAL_RHO_MIN = 0.0; const VISUAL_RHO_MAX = 0.9;
+    const VISUAL_T_MIN = 0.0; const VISUAL_T_MAX = 1.6;
+
+    // Approximate 2D LJ Phase Diagram Reference Points
+    const tc = 0.46, rhoc = 0.35;
+    const tt = 0.41, rhol = 0.70, rhos = 0.82, rhog = 0.05;
+
+    function mapRealToSvg(rh, t) {
+        let x = ((rh - VISUAL_RHO_MIN) / (VISUAL_RHO_MAX - VISUAL_RHO_MIN)) * MAP_X_MAX;
+        let y = MAP_Y_MAX - ((t - VISUAL_T_MIN) / (VISUAL_T_MAX - VISUAL_T_MIN)) * MAP_Y_MAX;
+        return { x, y };
+    }
+
+    function mapSvgToReal(x, y) {
+        let rh = VISUAL_RHO_MIN + (x / MAP_X_MAX) * (VISUAL_RHO_MAX - VISUAL_RHO_MIN);
+        let t = VISUAL_T_MIN + ((MAP_Y_MAX - y) / MAP_Y_MAX) * (VISUAL_T_MAX - VISUAL_T_MIN);
+        return { rh, t };
+    }
+
+    // Draw the structural phase domains visually onto the SVG
+    function initDiagram() {
+        // Draw regions by injecting path polygons
+        let pCrit = mapRealToSvg(rhoc, tc);
+        let pTripL = mapRealToSvg(rhol, tt);
+        let pTripG = mapRealToSvg(rhog, tt);
+        let pTripS = mapRealToSvg(rhos, tt);
+
+        let g = document.getElementById('regionsGroup');
+        g.innerHTML = ''; // reset
+        
+        // Coexistence Dome: Gas-Liquid (Binodal approximation)
+        let domePath = `M ${pTripG.x} ${pTripG.y} Q ${pCrit.x - 30} ${pCrit.y - 10} ${pCrit.x} ${pCrit.y} Q ${pCrit.x + 80} ${pCrit.y - 10} ${pTripL.x} ${pTripL.y} Z`;
+        
+        // Sublimation Coexistence: Solid-Gas
+        let subPath = `M 0 400 L ${pTripG.x} ${pTripG.y} L ${pTripS.x} ${pTripS.y} L 400 400 Z`;
+
+        // Melting Coexistence: Solid-Liquid
+        let topMeltS = mapRealToSvg(0.85, 1.6);
+        let topMeltL = mapRealToSvg(0.72, 1.6);
+        let meltPath = `M ${pTripL.x} ${pTripL.y} L ${topMeltL.x} ${topMeltL.y} L ${topMeltS.x} ${topMeltS.y} L ${pTripS.x} ${pTripS.y} Z`;
+
+        // Add shaded polygons
+        g.innerHTML += `<path d="${domePath}" fill="rgba(20, 132, 230, 0.1)" stroke="#1484e6" stroke-dasharray="4" />`;
+        g.innerHTML += `<path d="${subPath}" fill="rgba(210, 168, 255, 0.1)" stroke="#d2a8ff" stroke-dasharray="4" />`;
+        g.innerHTML += `<path d="${meltPath}" fill="rgba(210, 168, 255, 0.15)" stroke="#d2a8ff" stroke-dasharray="4" />`;
+        g.innerHTML += `<line x1="${pTripG.x}" y1="${pTripG.y}" x2="${pTripS.x}" y2="${pTripS.y}" stroke="#1a1a1a" stroke-width="2" />`;
+
+        // Labels
+        let addLabel = (x, y, txt, col) => {
+            let p = mapRealToSvg(x, y);
+            g.innerHTML += `<text x="${p.x}" y="${p.y}" fill="${col}" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle">${txt}</text>`;
+        }
+        addLabel(0.35, 0.40, "LIQ-GAS", "#1484e6");
+        addLabel(0.50, 0.15, "SOLID-GAS", "#b266ff");
+        addLabel(0.78, 1.0, "SOLID - LIQUID", "#b266ff");
+        addLabel(0.86, 0.20, "SOLID", "#b266ff");
+        addLabel(0.1, 0.8, "GAS", "#555");
+        addLabel(0.5, 0.8, "SUPERCRIT FLUID", "#555");
+
+        // Points
+        let tcPoint = document.getElementById('svgCriticalPoint');
+        tcPoint.setAttribute('cx', pCrit.x); tcPoint.setAttribute('cy', pCrit.y);
+        let tcTxt = document.getElementById('txtCritical');
+        tcTxt.setAttribute('x', pCrit.x); tcTxt.setAttribute('y', pCrit.y - 10);
+        
+        let tpPoint = document.getElementById('svgTriplePoint');
+        tpPoint.setAttribute('cx', pTripL.x); tpPoint.setAttribute('cy', pTripL.y);
+    }
+    
+    // --- Physics Engine ---
+    const N = 400;     // Fixed Number of Particles
+    let L = 0;         // Box size L (determined by Rho)
+    let particles = [];
+    let maxDisp = 0.5; // Max random displacement per trial move
+    
+    // Lennard-Jones constants mapping
+    const sigma = 1.0;
+    const epsilon = 1.0;
+    const r_cut = 2.5 * sigma;
+    const r_cut_sq = r_cut * r_cut;
+    // Energy shift to make potential 0 at r_cut seamlessly
+    const E_shift = 4.0 * epsilon * (Math.pow(sigma/r_cut, 12) - Math.pow(sigma/r_cut, 6));
+
+    // Energy of a single pair separated by r^2
+    function ljEnergySq(r2) {
+        if (r2 >= r_cut_sq) return 0.0;
+        const sr2 = (sigma * sigma) / r2;
+        const sr6 = sr2 * sr2 * sr2;
+        const sr12 = sr6 * sr6;
+        return 4.0 * epsilon * (sr12 - sr6) - E_shift;
+    }
+
+    // Minimum image distance squared
+    function getDistSq(p1, p2) {
+        let dx = p1.x - p2.x;
+        let dy = p1.y - p2.y;
+        dx -= L * Math.round(dx / L);
+        dy -= L * Math.round(dy / L);
+        return dx*dx + dy*dy;
+    }
+
+    // Evaluate total interaction of one particle with all others
+    function getParticleEnergy(idx, pObj) {
+        let e = 0.0;
+        for (let i = 0; i < N; i++) {
+            if (i === idx) continue;
+            let r2 = getDistSq(pObj, particles[i]);
+            e += ljEnergySq(r2);
+        }
+        return e;
+    }
+
+    // Recalculate full system energy
+    let energySys = 0;
+    function calcTotalEnergy() {
+        let e = 0;
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                e += ljEnergySq(getDistSq(particles[i], particles[j]));
+            }
+        }
+        energySys = e;
+    }
+
+    // Initialize regular lattice
+    function initParticles() {
+        particles = [];
+        L = Math.sqrt(N / Rho);
+        let gridSize = Math.ceil(Math.sqrt(N));
+        let spacing = L / gridSize;
+        for (let i = 0; i < N; i++) {
+            let row = Math.floor(i / gridSize);
+            let col = i % gridSize;
+            let offsetPhase = (row % 2 === 0) ? 0 : spacing * 0.5; // Hexagonal-ish
+            particles.push({
+                x: (col * spacing + offsetPhase + spacing * 0.5) % L,
+                y: (row + 0.5) * spacing
+            });
+        }
+        calcTotalEnergy();
+    }
+
+    function relax() {
+        updateState(0.45, 0.30, true, true);
+        initParticles();
+    }
+
+    function updateState(t, rho, updateSliders = false, updateCursor = false) {
+        T = Math.max(0.01, t);
+        
+        // If density changed, rescale the box and coordinates proportionally
+        if (rho !== Rho && rho >= 0.02 && rho <= 0.90) {
+            let newL = Math.sqrt(N / rho);
+            let scale = newL / L;
+            for (let i = 0; i < N; i++) {
+                particles[i].x *= scale;
+                particles[i].y *= scale;
+            }
+            L = newL;
+            Rho = rho;
+            calcTotalEnergy();
+        }
+
+        valT.textContent = T.toFixed(3);
+        valRho.textContent = Rho.toFixed(3);
+
+        if (updateSliders) {
+            sliderT.value = T;
+            sliderRho.value = Rho;
+        }
+        if (updateCursor) {
+            let pos = mapRealToSvg(Rho, T);
+            let cx = Math.max(MAP_X_MIN, Math.min(MAP_X_MAX, pos.x));
+            let cy = Math.max(MAP_Y_MIN, Math.min(MAP_Y_MAX, pos.y));
+            cursor.setAttribute('cx', cx);
+            cursor.setAttribute('cy', cy);
+        }
+    }
+
+    // --- Interaction ---
+    let isDragging = false;
+    function handleSvgInteraction(e) {
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+        
+        let x = Math.max(MAP_X_MIN, Math.min(MAP_X_MAX, svgP.x));
+        let y = Math.max(MAP_Y_MIN, Math.min(MAP_Y_MAX, svgP.y));
+        
+        let realVals = mapSvgToReal(x, y);
+        updateState(realVals.t, realVals.rh, true, true);
+    }
+    svg.addEventListener('mousedown', (e) => { isDragging = true; handleSvgInteraction(e); });
+    window.addEventListener('mousemove', (e) => { if (isDragging) handleSvgInteraction(e); });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    sliderT.addEventListener('input', (e) => updateState(parseFloat(e.target.value), Rho, false, true));
+    sliderRho.addEventListener('input', (e) => updateState(T, parseFloat(e.target.value), false, true));
+
+    // --- Main Loop ---
+    function sweep() {
+        let accepted = 0;
+        // Do N trial moves
+        for (let i = 0; i < N; i++) {
+            let idx = (Math.random() * N) | 0;
+            let pOld = particles[idx];
+            let eOld = getParticleEnergy(idx, pOld);
+            
+            let dx = (Math.random() - 0.5) * maxDisp;
+            let dy = (Math.random() - 0.5) * maxDisp;
+            let pNew = { x: pOld.x + dx, y: pOld.y + dy };
+            
+            // Periodic wrap bounds
+            if (pNew.x < 0) pNew.x += L;
+            if (pNew.x >= L) pNew.x -= L;
+            if (pNew.y < 0) pNew.y += L;
+            if (pNew.y >= L) pNew.y -= L;
+            
+            let eNew = getParticleEnergy(idx, pNew);
+            let dE = eNew - eOld;
+            
+            // Metropolis Acceptance
+            if (dE <= 0 || Math.random() < Math.exp(-dE / T)) {
+                particles[idx] = pNew;
+                energySys += dE;
+                accepted++;
+            }
+        }
+        
+        // Auto-tune accepted displacement to keep ~ 40% acceptance rate
+        let rate = accepted / N;
+        if (rate > 0.5) maxDisp *= 1.05;
+        if (rate < 0.3) maxDisp *= 0.95;
+        if (maxDisp > L/2) maxDisp = L/2;
+    }
+
+    function render() {
+        if (!canvas.parentElement) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width !== canvas.width || rect.height !== canvas.height) {
+            canvas.width = rect.width; canvas.height = rect.height;
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        let visualScale = canvas.width / L;
+        let pRadius = (sigma / 2) * visualScale;
+        
+        // Count coordination number for coloring
+        let r_coord_sq = 1.4 * 1.4; // Neighbors within 1.4 sigma length defined by LJ minimum
+        
+        for (let i = 0; i < N; i++) {
+            let p = particles[i];
+            
+            let neighbors = 0;
+            for (let j = 0; j < N; j++) {
+                if (i===j) continue;
+                if (getDistSq(p, particles[j]) <= r_coord_sq) neighbors++;
+            }
+            
+            // Paint based on local density clustering to highlight phases
+            if (neighbors >= 6) { ctx.fillStyle = '#d2a8ff'; }      // Solid
+            else if (neighbors >= 3) { ctx.fillStyle = '#1484e6'; } // Liquid
+            else { ctx.fillStyle = '#888888'; }                     // Gas
+
+            ctx.beginPath();
+            ctx.arc(p.x * visualScale, p.y * visualScale, pRadius * 0.9, 0, 2*Math.PI);
+            ctx.fill();
+
+            // Render periodic ghosts at the edges so droplets seamlessly cross borders
+            let margin = sigma;
+            let gx=[], gy=[];
+            if (p.x < margin) gx.push(p.x + L); else if (p.x > L - margin) gx.push(p.x - L);
+            if (p.y < margin) gy.push(p.y + L); else if (p.y > L - margin) gy.push(p.y - L);
+            
+            let drawG = (_x, _y) => {
+                ctx.beginPath();
+                ctx.arc(_x * visualScale, _y * visualScale, pRadius * 0.9, 0, 2*Math.PI);
+                ctx.fill();
+            }
+            for (let dx of gx) drawG(dx, p.y);
+            for (let dy of gy) drawG(p.x, dy);
+            for (let dx of gx) for (let dy of gy) drawG(dx, dy);
+        }
+
+        valEnergy.textContent = (energySys / N).toFixed(2);
+    }
+
+    function animate() {
+        // Do 3 Monte Carlo sweeps per animation frame
+        sweep();
+        sweep();
+        sweep();
+        render();
+        requestAnimationFrame(animate);
+    }
+
+    initDiagram();
+    relax();
+    requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>
