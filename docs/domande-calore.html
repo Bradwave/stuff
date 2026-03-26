@@ -641,7 +641,7 @@
     <!-- Lightbox Container -->
     <div id="lightbox" class="lightbox">
         <button class="lightbox-close">&times;</button>
-        <img id="lightbox-img" src="" alt="Ingrandimento">
+        <img id="lightbox-img" alt="Ingrandimento">
     </div>
 
     <script>
@@ -691,8 +691,8 @@
             const y = e.clientY;
             
             // Update gradient center
-            bg.style.setProperty('--mouse-x', `{x}px`);
-            bg.style.setProperty('--mouse-y', `{y}px`);
+            bg.style.setProperty('--mouse-x', `${x}px`);
+            bg.style.setProperty('--mouse-y', `${y}px`);
 
             // Create liquid trail
             const now = Date.now();
@@ -705,8 +705,8 @@
         function createTrailDot(x, y) {
             const dot = document.createElement('div');
             dot.className = 'trail-dot';
-            dot.style.left = `{x}px`;
-            dot.style.top = `{y}px`;
+            dot.style.left = `${x}px`;
+            dot.style.top = `${y}px`;
             document.body.appendChild(dot);
             
             // Cleanup
@@ -744,7 +744,7 @@
             mainContainer.classList.remove('blur-active');
             setTimeout(() => { 
                 lightbox.style.display = 'none'; 
-                lightboxImg.src = ''; 
+                lightboxImg.removeAttribute('src'); 
             }, 400); // Wait for transition (0.4s)
         }
 
@@ -843,7 +843,7 @@
             if (currentQ) parsed.push(currentQ);
 
             questions = parsed;
-            console.log(`Loaded {questions.length} questions.`);
+            console.log(`Loaded ${questions.length} questions.`);
             
             if (questions.length === 0) {
                 showError("Nessuna domanda trovata nel file. Controlla il formato (es. '1. **{A}** Testo').");
@@ -890,11 +890,11 @@
             questionsDisplay.innerHTML = pair.map(q => `
                 <div class="question-card">
                     <div class="question-header">
-                        <span class="question-number">#{q.number}</span>
-                        <span class="question-group">Gruppo {q.group}</span>
+                        <span class="question-number">#${q.number}</span>
+                        <span class="question-group">Gruppo ${q.group}</span>
                     </div>
                     <div class="question-text">
-                        {formatText(q.text)}
+                        ${formatText(q.text)}
                     </div>
                 </div>
             `).join('');
@@ -907,10 +907,10 @@
             // Convert **bold** to <b>, *italic* to <i>, `code` to <code>
             // Convert ![alt](src) to <img>
             return text
-                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="2" alt="1">')
-                .replace(/\*\*(.*?)\*\*/g, '<b>1</b>')
-                .replace(/\*(.*?)\*/g, '<i>1</i>')
-                .replace(/`(.*?)`/g, '<code>1</code>');
+                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                .replace(/`(.*?)`/g, '<code>$1</code>');
         }
 
         // Stats & LocalStorage
@@ -982,20 +982,20 @@
                 const group = question ? question.group : '?';
                 
                 return `
-                    <div class="hist-item" data-id="{num}">
+                    <div class="hist-item" data-id="${num}">
                         <div class="hist-bar-container">
                             <div class="hist-label">
-                                <span class="group-tag">{group}</span>
-                                <span style="font-weight:600">#{num}</span>
+                                <span class="group-tag">${group}</span>
+                                <span style="font-weight:600">#${num}</span>
                             </div>
-                            <div class="hist-bar-wrapper" onclick="toggleQuestionDetail({num})">
-                                <div class="hist-bar" style="width: {percentage}%">
-                                    {count > 0 ? `<span class="hist-count">{count}</span>` : ''}
+                            <div class="hist-bar-wrapper" onclick="toggleQuestionDetail(${num})">
+                                <div class="hist-bar" style="width: ${percentage}%">
+                                    ${count > 0 ? `<span class="hist-count">${count}</span>` : ''}
                                 </div>
                             </div>
                         </div>
-                        <div id="detail-{num}" class="hist-question-detail">
-                            {question ? formatText(question.text) : 'Errore caricamento domanda.'}
+                        <div id="detail-${num}" class="hist-question-detail">
+                            ${question ? formatText(question.text) : 'Errore caricamento domanda.'}
                         </div>
                     </div>
                 `;
@@ -1003,13 +1003,13 @@
         }
 
         function toggleQuestionDetail(id) {
-            const detailEl = document.getElementById(`detail-{id}`);
+            const detailEl = document.getElementById(`detail-${id}`);
             // Close others? Optional. Let's keep others open for comparison if user wants.
             // Actually, usually accordion style is nice, but simple toggle is fine.
             
             // If we want to close others:
             document.querySelectorAll('.hist-question-detail.active').forEach(el => {
-                if (el.id !== `detail-{id}`) el.classList.remove('active');
+                if (el.id !== `detail-${id}`) el.classList.remove('active');
             });
 
             detailEl.classList.toggle('active');
