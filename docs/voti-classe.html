@@ -589,6 +589,11 @@
         <div id="app"></div>
     </div>
     <script>
+        // Utility: check if value is a valid numeric grade (not NaN, null or missing)
+        function isNumeric(v) {
+            return v !== null && typeof v === 'number' && !isNaN(v);
+        }
+
         // Utility: parse CSV with comma/period decimals, missing values as NaN
         function parseCSVToObject(csv) {
             const lines = csv.trim().split(/\r?\n/);
@@ -686,10 +691,10 @@
                     
                     // Re-calculate averages as they are not saved or need function references
                      const classAvg = subjects.map((_, i) => {
-                        const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                        const vals = students.map(s => s.grades[i]).filter(isNumeric);
                         return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
                     });
-                    const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+                    const allVals = students.flatMap(s => s.grades.filter(isNumeric));
                     const overallAvg = allVals.length ? allVals.reduce((a,b)=>a+b,0)/allVals.length : NaN;
 
                     return {
@@ -768,12 +773,12 @@
             // Compute class averages per subject
             // Compute class averages per subject
             const classAvg = subjects.map((_, i) => {
-                const vals = students.map(s => s.grades[i]).filter(v => typeof v === 'number' && !isNaN(v));
+                const vals = students.map(s => s.grades[i]).filter(isNumeric);
                 return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
             });
 
             // overall average
-            const allVals = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+            const allVals = students.flatMap(s => s.grades.filter(isNumeric));
             const overallAvg = allVals.length ? allVals.reduce((a,b)=>a+b,0)/allVals.length : NaN;
 
             // Generate ID and Date
@@ -1104,7 +1109,7 @@
             table.appendChild(thead);
 
             const studentAvgs = students.map(s => {
-                const vals = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
+                const vals = s.grades.filter(isNumeric);
                 return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
             });
 
@@ -1129,7 +1134,7 @@
                 if(prevDataset && !IS_PRIVACY_MODE) {
                     const prevStudent = prevDataset.students.find(ps => ps.id === s.id || ps.name === s.name);
                     if(prevStudent) {
-                         const prevVals = prevStudent.grades.filter(v=>!isNaN(v));
+                         const prevVals = prevStudent.grades.filter(isNumeric);
                          const prevAvg = prevVals.length ? prevVals.reduce((a,b)=>a+b,0)/prevVals.length : NaN;
                          if(!isNaN(prevAvg) && !isNaN(avg)) {
                              if(avg > prevAvg + 0.05) { avgTrendArrow = '▲'; avgTrendClass = 'up'; }
@@ -1261,14 +1266,16 @@
             // Build footer rows: class mean, std dev, correlation (subject vs student overall avg)
             const tfoot = document.createElement('tfoot');
             // overall class average across all numeric grades
-            const allVals = students.flatMap(s => s.grades.filter(v => typeof v === 'number' && !isNaN(v)));
+            const allVals = students.flatMap(s => s.grades.filter(isNumeric));
             const overallAvgCalc = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : NaN;
             // Use dataset.overallAvg or calculated one (should be same)
             const overallAvgVal = dataset.overallAvg;
             const overallStd = allVals.length ? stddev(allVals) : NaN;
             // Compute per-student summary arrays for the right-hand columns (<6 count, deficit sum, deficit medio)
-            const belowCounts = students.map(s => s.grades.filter(g => !isNaN(g) && g < 6).length);
-            const deficitsArr = students.map(s => s.grades.filter(g => !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0));
+            // Filter out students with no recorded grades to avoid pulling down class averages.
+            const studentsWithData = students.filter(s => s.grades.some(isNumeric));
+            const belowCounts = studentsWithData.map(s => s.grades.filter(g => isNumeric(g) && g < 6).length);
+            const deficitsArr = studentsWithData.map(s => s.grades.filter(g => isNumeric(g) && g < 6).reduce((a, b) => a + (6 - b), 0));
             const ratiosArr = belowCounts.map((b, i) => b > 0 ? (deficitsArr[i] / b) : NaN);
             const fmt = v => (isNaN(v) ? '' : v.toFixed(2));
 
@@ -1279,13 +1286,13 @@
                 subjects.map((_, i) => `<td>${fmt(classAvg[i])}</td>`).join('') +
                 `<td class="sep-col">${fmt(mean(belowCounts))}</td>` +
                 `<td class="sep-col">${fmt(mean(deficitsArr))}</td>` +
-                `<td class="sep-col">${fmt((function(){ const vals = ratiosArr.filter(v=>!isNaN(v)); return vals.length? mean(vals) : NaN; })())}</td>`;
+                `<td class="sep-col">${fmt((function(){ const vals = ratiosArr.filter(isNumeric); return vals.length? mean(vals) : NaN; })())}</td>`;
             tfoot.appendChild(avgRow);
 
             // Standard deviation row
             const sdRow = document.createElement('tr');
             const sdCells = subjects.map((_, i) => {
-                const vals = students.map((s, si) => s.grades[i]).filter(v => !isNaN(v));
+                const vals = students.map((s, si) => s.grades[i]).filter(isNumeric);
                 return `<td>${isNaN(vals[0]) ? '' : stddev(vals).toFixed(2)}</td>`;
             }).join('');
             sdRow.innerHTML = `<th colspan="2">Dev. std ${isNaN(overallStd) ? '' : `<strong>${fmt(overallStd)}</strong>`}</th><td></td>` + sdCells + `<td class="sep-col"></td><td class="sep-col"></td><td class="sep-col"></td>`;
@@ -1299,7 +1306,7 @@
                 students.forEach((s, si) => {
                     const gv = s.grades[i];
                     const av = studentAvgs[si];
-                    if (!isNaN(gv) && !isNaN(av)) { x.push(gv); y.push(av); }
+                    if (isNumeric(gv) && isNumeric(av)) { x.push(gv); y.push(av); }
                 });
                 const c = pearson(x, y);
                 return `<td>${isNaN(c) ? '' : c.toFixed(2)}</td>`;
@@ -1324,9 +1331,9 @@
                             // Use active dataset
                             const dataset = getActiveDataset();
                             const vals = dataset.students.map(s => {
-                                const vs = s.grades.filter(v => !isNaN(v));
+                                const vs = s.grades.filter(isNumeric);
                                 return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : NaN;
-                            }).filter(v => !isNaN(v));
+                            }).filter(isNumeric);
                             // compute overall avg and stddev of student averages
                             const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
                             const sd = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); };
@@ -1348,21 +1355,21 @@
                             // We need to fetch data from the *Active* dataset (or currently selected in histogram? default active)
                             const dataset = getActiveDataset();
                             const valsAll = dataset.students.map(s => s.grades[i]);
-                            const vals = valsAll.filter(v => typeof v === 'number' && !isNaN(v));
+                            const vals = valsAll.filter(isNumeric);
                             const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
                             const sd = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length); };
                             const subjAvg = vals.length ? mean(vals) : NaN;
                             const subjStd = vals.length ? sd(vals) : NaN;
                             // compute correlation
                             const studentAvgs = dataset.students.map(s => {
-                                const vs = s.grades.filter(v => typeof v === 'number' && !isNaN(v));
+                                const vs = s.grades.filter(isNumeric);
                                 return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : NaN;
                             });
                             const x = [], y = [];
                             dataset.students.forEach((s, idx) => {
                                 const gv = s.grades[i];
                                 const av = studentAvgs[idx];
-                                if (!isNaN(gv) && !isNaN(av)) { x.push(gv); y.push(av); }
+                                if (isNumeric(gv) && isNumeric(av)) { x.push(gv); y.push(av); }
                             });
                             const pearson = (a,b) => {
                                 if (a.length !== b.length || a.length < 2) return NaN;
@@ -2062,10 +2069,10 @@
 
         function updateRadarStats(student, dataset) {
              const grades = student.grades;
-             const below = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).length;
-             const deficit = grades.filter(g => typeof g === 'number' && !isNaN(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
+             const below = grades.filter(g => isNumeric(g) && g < 6).length;
+             const deficit = grades.filter(g => isNumeric(g) && g < 6).reduce((a, b) => a + (6 - b), 0);
              const ratio = below > 0 ? (deficit / below) : NaN;
-             const vals = grades.filter(v => !isNaN(v));
+             const vals = grades.filter(isNumeric);
              const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : NaN;
              const classOverall = dataset.overallAvg;
 
@@ -2573,7 +2580,7 @@
 
             // per-subject stats
             const subjStats = subjects.map((subj, i) => {
-                const vals = students.map(s => s.grades[i]).filter(v => !isNaN(v));
+                const vals = students.map(s => s.grades[i]).filter(isNumeric);
                 const avg = vals.length? mean(vals) : NaN;
                 const sd = vals.length? stddev(vals) : NaN;
                 const belowCount = vals.filter(v => v < 6).length;
@@ -2583,7 +2590,7 @@
 
             // student averages
             const studentAvgs = students.map(s => {
-                const vals = s.grades.filter(v=>!isNaN(v));
+                const vals = s.grades.filter(isNumeric);
                 const avg = vals.length? mean(vals) : NaN;
                 return { name: s.name, avg };
             });
@@ -2593,9 +2600,10 @@
             const bottom = sorted.slice(-3).reverse();
 
             // build multiple report sections (plain-text + html) so each can be copied separately
-            const allNumericGrades = students.flatMap(s => s.grades.filter(v => !isNaN(v)));
+            const allNumericGrades = students.flatMap(s => s.grades.filter(isNumeric));
             const overallSd = allNumericGrades.length ? stddev(allNumericGrades) : NaN;
-            const belowCounts = students.map(s => s.grades.filter(v => !isNaN(v) && v < 6).length);
+            const studentsWithData = students.filter(s => s.grades.some(isNumeric));
+            const belowCounts = studentsWithData.map(s => s.grades.filter(v => isNumeric(v) && v < 6).length);
             const meanBelowPerStudent = belowCounts.length ? mean(belowCounts) : NaN;
             const totalInsuff = subjStats.reduce((a,b)=>a+b.belowCount,0);
             const totalDeficit = subjStats.reduce((a,b)=>a+b.deficit,0);

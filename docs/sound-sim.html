@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acoustic Tube Simulator | Physics Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        :root {
+            --color-bg: #f5f5f5;
+            --color-bg-panel: #ffffff;
+            --color-text-main: #1a1a1a;
+            --color-text-muted: #666666;
+            --color-accent: #B01A00;
+            --color-tube: #222222;
+            --color-border: #dddddd;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            font-family: var(--font-mono);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            background-color: var(--color-bg-panel);
+            border-right: 1px solid var(--color-border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin: 4px 0 0 0;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-text-muted);
+            font-weight: 700;
+            margin-top: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .control-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .val-display {
+            color: var(--color-accent);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--color-border);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        button {
+            flex: 1;
+            background-color: white;
+            border: 1px solid var(--color-border);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        button.active {
+            background-color: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+        }
+
+        .main-view {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #simCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            background: white;
+            image-rendering: pixelated; /* Sharp rendering */
+        }
+
+        .overlay-text {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.65rem;
+            color: var(--color-text-muted);
+            pointer-events: none;
+        }
+
+        .legend {
+            margin-top: auto;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            color: var(--color-text-muted);
+            border: 1px solid var(--color-border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <header>
+                <h1>Acoustic Simulation</h1>
+                <p>Wave Equation & Particle Dynamics</p>
+            </header>
+
+            <div class="btn-group">
+                <button id="resetBtn">
+                    <span class="material-symbols-outlined">restart_alt</span> RESET
+                </button>
+                <button id="pauseBtn">
+                    <span class="material-symbols-outlined" id="pauseIcon">pause</span> <span id="pauseText">PAUSE</span>
+                </button>
+            </div>
+
+            <div class="section-title">Excitation</div>
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Frequency</span>
+                    <span class="val-display" id="freqVal">4.0</span>
+                </div>
+                <input type="range" id="freq" min="0.5" max="10.0" step="0.1" value="4.0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Amplitude</span>
+                    <span class="val-display" id="ampVal">1.0</span>
+                </div>
+                <input type="range" id="amp" min="0" max="2" step="0.05" value="1.0">
+            </div>
+
+            <div class="section-title">Instrument</div>
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Tube Length</span>
+                    <span class="val-display" id="lenVal">60%</span>
+                </div>
+                <input type="range" id="tubeLen" min="30" max="80" step="1" value="60">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Tube Open/Closed</span>
+                    <input type="checkbox" id="tubeClosed" style="margin:0;">
+                </div>
+                <div style="font-size: 0.65rem; color: #888;">Check to cap the right end of the tube (hard reflection). Uncheck for open end (soft reflection).</div>
+            </div>
+
+            <div class="section-title">Visualization</div>
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Particle Density</span>
+                    <span class="val-display" id="densVal">6000</span>
+                </div>
+                <input type="range" id="density" min="1000" max="15000" step="500" value="6000">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Particle Exaggeration</span>
+                    <span class="val-display" id="dispVal">High</span>
+                </div>
+                <input type="range" id="disp" min="0" max="100" step="1" value="60">
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="dot" style="background: black;"></div>
+                    <span>Air Particle</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background: var(--color-accent);"></div>
+                    <span>Tracer Particle</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background: rgba(176,26,0,0.1); border-radius:0;"></div>
+                    <span>Pressure Heatmap</span>
+                </div>
+                <p style="margin-top: 10px;">
+                    Simulating the 2D scalar wave equation $\frac{\partial^2 P}{\partial t^2} = c^2 \nabla^2 P$. Particles act as driven harmonic oscillators in the pressure gradient field to visualize longitudinal displacement.
+                </p>
+            </div>
+        </aside>
+
+        <main class="main-view">
+            <div class="canvas-container">
+                <canvas id="simCanvas"></canvas>
+            </div>
+            <div class="overlay-text">
+                Solver: 2nd Order FDM | Grid: 200x120 | <span id="fps">60</span> FPS
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        // --------------------------------------------------------
+        // PHYSICS ENGINE (2nd Order Wave Equation + Particle Dynamics)
+        // --------------------------------------------------------
+        const W = 200;
+        const H = 120;
+        
+        // Pressure grids for Verlet integration (current, previous, next)
+        let P = new Float32Array(W * H);
+        let P_prev = new Float32Array(W * H);
+        let P_next = new Float32Array(W * H);
+        
+        let walls = new Uint8Array(W * H);
+        let dampingField = new Float32Array(W * H);
+        
+        let particles = [];
+        let numParticles = 6000;
+        
+        // Sim State
+        let time = 0;
+        let isPaused = false;
+        
+        // Parameters
+        let alpha = 0.45; // Courant number (c^2 dt^2 / dx^2). Must be <= 0.5 for 2D stability
+        let freq = 4.0;
+        let amp = 1.0;
+        let tLength = 60; // percentage
+        let isClosed = false;
+        let particleExaggeration = 60;
+
+        // UI Selectors
+        const freqSlider = document.getElementById('freq');
+        const ampSlider = document.getElementById('amp');
+        const lenSlider = document.getElementById('tubeLen');
+        const densSlider = document.getElementById('density');
+        const dispSlider = document.getElementById('disp');
+        const closedCheck = document.getElementById('tubeClosed');
+        
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function init() {
+            resize();
+            initGrid();
+            createParticles();
+            requestAnimationFrame(loop);
+        }
+
+        function resize() {
+            const aspect = W / H;
+            const container = canvas.parentElement;
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            
+            if (cw / ch > aspect) {
+                canvas.height = ch;
+                canvas.width = ch * aspect;
+            } else {
+                canvas.width = cw;
+                canvas.height = cw / aspect;
+            }
+        }
+
+        function initGrid() {
+            P.fill(0);
+            P_prev.fill(0);
+            P_next.fill(0);
+            walls.fill(0);
+            dampingField.fill(1.0);
+            time = 0;
+            
+            // Build Absorbing Boundary Conditions (PML-lite)
+            const dampZone = 20;
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    // Distance to nearest edge
+                    let dist = Math.min(x, W - 1 - x, y, H - 1 - y);
+                    if (dist < dampZone) {
+                        // Quadratic scaling for smooth absorption
+                        let ratio = (dampZone - dist) / dampZone;
+                        // damping goes from 1.0 down to ~0.7 at the very edge
+                        dampingField[x + y * W] = 1.0 - (0.3 * ratio * ratio);
+                    }
+                }
+            }
+
+            // Build Tube Walls
+            const startX = dampZone;
+            const endX = Math.floor((W - dampZone * 2) * (tLength / 100)) + dampZone;
+            const midY = Math.floor(H / 2);
+            const r = 8; // tube half width
+            
+            for (let x = startX; x <= endX; x++) {
+                walls[x + (midY - r) * W] = 1;
+                walls[x + (midY + r) * W] = 1;
+            }
+            
+            // Mouthpiece (left cap)
+            for (let y = midY - r + 1; y < midY + r; y++) {
+                walls[startX + y * W] = 1;
+            }
+            
+            // Optional Right Cap
+            if (isClosed) {
+                for (let y = midY - r; y <= midY + r; y++) {
+                    walls[endX + y * W] = 1;
+                }
+            }
+        }
+
+        function createParticles() {
+            particles = [];
+            const W_inner = W - 40; // Avoid spawning in the damp zones heavily
+            const H_inner = H - 40;
+            
+            for (let i = 0; i < numParticles; i++) {
+                let x, y;
+                
+                // Bias particles towards the tube axis for better visual
+                if (Math.random() < 0.7) {
+                    x = 20 + Math.random() * W_inner;
+                    // Normal distribution around center
+                    let u1 = Math.random(), u2 = Math.random();
+                    let randStdNormal = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2); 
+                    y = H/2 + randStdNormal * 12;
+                    // Clamp
+                    y = Math.max(20, Math.min(H-20, y));
+                } else {
+                    x = 20 + Math.random() * W_inner;
+                    y = 20 + Math.random() * H_inner;
+                }
+
+                particles.push({
+                    ex: x,      // Equilibrium X
+                    ey: y,      // Equilibrium Y
+                    x: x,       // Current X
+                    y: y,       // Current Y
+                    vx: 0,
+                    vy: 0,
+                    isTracer: Math.random() < 0.01 // 1% tracers
+                });
+            }
+        }
+
+        function updatePhysics() {
+            if (isPaused) return;
+            
+            // Multiple solver steps per render frame for smooth waves
+            const steps = 3;
+            for (let s = 0; s < steps; s++) {
+                time++;
+
+                // 1. Solve Wave Equation using Finite Difference
+                for (let y = 1; y < H - 1; y++) {
+                    for (let x = 1; x < W - 1; x++) {
+                        let i = x + y * W;
+                        
+                        if (walls[i]) {
+                            P_next[i] = 0;
+                            continue;
+                        }
+
+                        // Neumann boundary conditions (rigid wall reflection)
+                        // If neighbor is a wall, use the current cell's pressure as the neighbor's pressure
+                        let left  = walls[i - 1] ? P[i] : P[i - 1];
+                        let right = walls[i + 1] ? P[i] : P[i + 1];
+                        let up    = walls[i - W] ? P[i] : P[i - W];
+                        let down  = walls[i + W] ? P[i] : P[i + W];
+
+                        let laplacian = left + right + up + down - 4 * P[i];
+                        
+                        // Verlet integration
+                        P_next[i] = 2 * P[i] - P_prev[i] + alpha * laplacian;
+                        
+                        // Apply absorbing damping field
+                        P_next[i] *= dampingField[i];
+                    }
+                }
+
+                // 2. Inject Source (Mouthpiece)
+                // We add to the pressure just inside the left cap
+                const startX = 20; // dampZone
+                const midY = Math.floor(H / 2);
+                const val = Math.sin(time * 0.05 * freq) * amp * 0.5; // Soft source
+                
+                for (let y = midY - 6; y <= midY + 6; y++) {
+                    let idx = (startX + 1) + y * W;
+                    P_next[idx] += val; // Soft injection
+                }
+
+                // Swap buffers
+                let temp = P_prev;
+                P_prev = P;
+                P = P_next;
+                P_next = temp; 
+            }
+            
+            // 3. Update Particles
+            // Particles are treated as damped harmonic oscillators driven by the pressure gradient.
+            // Force = -grad(P)
+            const k = 0.05;    // Restoring spring constant
+            const damp = 0.85; // Velocity damping
+            const coupling = particleExaggeration * 0.002;
+            
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                
+                // Get gradient at equilibrium position to keep it stable
+                let px = Math.floor(p.ex);
+                let py = Math.floor(p.ey);
+                
+                // Clamp
+                if (px < 1) px = 1; if (px >= W-1) px = W-2;
+                if (py < 1) py = 1; if (py >= H-1) py = H-2;
+                
+                let idx = px + py * W;
+                
+                // Central difference gradient
+                let gradX = (P[idx + 1] - P[idx - 1]) * 0.5;
+                let gradY = (P[idx + W] - P[idx - W]) * 0.5;
+                
+                // Driving force from acoustic pressure
+                p.vx -= gradX * coupling;
+                p.vy -= gradY * coupling;
+                
+                // Restoring force to equilibrium
+                p.vx -= (p.x - p.ex) * k;
+                p.vy -= (p.y - p.ey) * k;
+                
+                p.vx *= damp;
+                p.vy *= damp;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cw = canvas.width / W;
+            const ch = canvas.height / H;
+
+            // 1. Draw Pressure Field Heatmap
+            // We draw at half resolution for speed and stylistic pixelation
+            const skip = 2;
+            for (let y = 0; y < H; y += skip) {
+                for (let x = 0; x < W; x += skip) {
+                    const val = P[x + y * W];
+                    if (Math.abs(val) > 0.05) {
+                        const intensity = Math.min(Math.abs(val) * 0.3, 0.4);
+                        ctx.fillStyle = val > 0 
+                            ? `rgba(176, 26, 0, ${intensity})`   // Compression (Red)
+                            : `rgba(0, 100, 255, ${intensity})`; // Rarefaction (Blue)
+                        ctx.fillRect(x * cw, y * ch, cw * skip, ch * skip);
+                    }
+                }
+            }
+
+            // 2. Draw Walls
+            ctx.fillStyle = '#222';
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    if (walls[x + y * W]) {
+                        ctx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
+                    }
+                }
+            }
+            
+            // 3. Draw Mouthpiece Active Area Indicator
+            const startX = 20;
+            const midY = Math.floor(H / 2);
+            const r = 8;
+            ctx.fillStyle = 'rgba(176, 26, 0, 0.5)';
+            ctx.fillRect((startX - 1) * cw, (midY - r + 1) * ch, cw * 2, ch * (r * 2 - 2));
+
+            // 4. Draw Particles
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                let sx = p.x * cw;
+                let sy = p.y * ch;
+                
+                if (p.isTracer) {
+                    ctx.fillStyle = '#B01A00';
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, cw * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(sx, sy, cw * 0.4, ch * 0.4); // Tiny square particles
+                }
+            }
+        }
+
+        let lastTime = 0;
+        function loop(t) {
+            const dt = t - lastTime;
+            lastTime = t;
+            if (dt > 0) document.getElementById('fps').innerText = Math.round(1000/dt);
+
+            updatePhysics();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // --- Event Listeners ---
+        freqSlider.addEventListener('input', (e) => {
+            freq = parseFloat(e.target.value);
+            document.getElementById('freqVal').innerText = freq.toFixed(1);
+        });
+        
+        ampSlider.addEventListener('input', (e) => {
+            amp = parseFloat(e.target.value);
+            document.getElementById('ampVal').innerText = amp.toFixed(2);
+        });
+        
+        lenSlider.addEventListener('input', (e) => {
+            tLength = parseInt(e.target.value);
+            document.getElementById('lenVal').innerText = tLength + '%';
+            initGrid();
+        });
+        
+        closedCheck.addEventListener('change', (e) => {
+            isClosed = e.target.checked;
+            initGrid();
+        });
+        
+        densSlider.addEventListener('input', (e) => {
+            numParticles = parseInt(e.target.value);
+            document.getElementById('densVal').innerText = numParticles;
+            createParticles();
+        });
+        
+        dispSlider.addEventListener('input', (e) => {
+            particleExaggeration = parseInt(e.target.value);
+            let label = "Med";
+            if (particleExaggeration < 30) label = "Low";
+            if (particleExaggeration > 70) label = "High";
+            document.getElementById('dispVal').innerText = label;
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            document.getElementById('pauseIcon').innerText = isPaused ? 'play_arrow' : 'pause';
+            document.getElementById('pauseText').innerText = isPaused ? 'RESUME' : 'PAUSE';
+            pauseBtn.classList.toggle('active', isPaused);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            initGrid();
+        });
+
+        window.addEventListener('resize', resize);
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domande Ottica</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-color: #faf5ff; /* Purple 50 */
+            --card-bg: #ffffff;
+            --text-primary: #3b0764; /* Purple 950 */
+            --text-secondary: #7e22ce; /* Purple 700 */
+            --accent-color: #7c3aed; /* Violet 600 */
+            --accent-hover: #6d28d9; /* Violet 700 */
+            --success-color: #a855f7; /* Purple 500 */
+            --danger-color: #c026d3; /* Fuchsia 600 */
+            --border-color: #e9d5ff; /* Purple 200 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #interactive-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(
+                800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+                rgba(124, 58, 237, 0.15), 
+                transparent 40%
+            );
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            transition: filter 0.3s ease; /* Smooth blur transition */
+        }
+
+        .container.blur-active {
+            filter: blur(8px);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, #7c3aed, #c026d3);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .controls-secondary {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        #pick-btn {
+            font-size: 1.25rem;
+            padding: 1rem 3rem;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            width: 100%;
+            max-width: 400px;
+            justify-content: center;
+        }
+
+        #pick-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f3e8ff;
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        button.reset {
+            /* Override specific reset styles if needed, or merge with btn-secondary */
+            border-color: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        button.reset:hover {
+            background-color: #f3e8ff; /* Purple 100 */
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .questions-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .questions-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .question-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.1);
+            animation: fadeIn 0.5s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .question-number {
+            background-color: #f3e8ff; /* Purple 100 */
+            color: var(--accent-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .question-group {
+            font-family: monospace;
+            opacity: 0.7;
+        }
+
+        .question-text {
+            font-size: 1.125rem;
+            line-height: 1.6;
+        }
+
+        .question-text img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-section {
+            margin-top: 3rem;
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .histogram {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .hist-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .hist-label {
+            width: 70px;
+            text-align: right;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Align group left, number right */
+        }
+
+        .hist-bar-wrapper {
+            flex: 1;
+            background-color: #f3e8ff; /* Light purple track */
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer; /* Make clickable */
+        }
+
+        .hist-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            min-width: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            box-sizing: border-box;
+        }
+
+        .hist-count {
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .hist-question-detail {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin: 0.75rem 0 1rem calc(70px + 1rem); /* Align with bar start */
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
+            display: none;
+            animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .hist-question-detail.active {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hist-question-detail img {
+            max-width: 200px;
+            max-height: 200px;
+            width: auto;
+            height: auto;
+            display: block;
+            margin-top: 0.5rem;
+        }
+
+        .group-tag {
+            background-color: #f3e8ff;
+            color: var(--accent-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-right: 6px;
+            display: inline-block;
+            min-width: 16px;
+            text-align: center;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(59, 7, 100, 0.8); /* Deep purple tint */
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .lightbox.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(0.8) translateY(20px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background-color: #faf5ff; /* Very light purple background */
+            padding: 1rem;
+        }
+
+        .lightbox.active img {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            background-color: white;
+            color: var(--accent-color);
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .lightbox-close:hover {
+            transform: scale(1.1);
+            background-color: #f3e8ff;
+        }
+
+        .error-message {
+            background-color: #fae8ff;
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        /* Modal Styles */
+        /* Bottom Panel Styles */
+        /* Bottom Panel Styles */
+        .bottom-panel {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            width: 95%;
+            max-width: 1000px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.1);
+            z-index: 1000;
+            transform: translateX(-50%) translateY(calc(100% - 0.5rem)); /* Show less of button */
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bottom-panel.open {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .bottom-panel-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            padding: 2rem;
+            box-sizing: border-box;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        /* Toggle Arrow Button */
+        .toggle-stats-btn {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            background-color: var(--accent-color); /* Purple */
+            border: 4px solid var(--bg-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+            transition: background-color 0.2s;
+            z-index: 1002;
+        }
+
+        .toggle-stats-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .toggle-stats-btn svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .bottom-panel.open .toggle-stats-btn svg {
+            transform: rotate(180deg);
+        }
+
+        .close-btn {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        /* Stats in Modal */
+        .stats-section {
+            /* Now inside modal, reset margins */
+            margin-top: 0;
+            border: none;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        .trail-dot {
+            position: fixed;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(124, 58, 237, 0.15);
+            pointer-events: none;
+            z-index: -1;
+            transform: translate(-50%, -50%);
+            animation: fadeTrail 1.5s ease-out forwards;
+            filter: blur(40px);
+        }
+
+        @keyframes fadeTrail {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+
+        #anim-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2000;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 0;
+        }
+
+        #anim-toggle:hover {
+            transform: scale(1.1);
+            color: var(--accent-color);
+        }
+
+        body.no-animation #interactive-bg {
+            opacity: 0;
+        }
+
+        body.no-animation .trail-dot {
+            display: none;
+        }
+    </style>
+    
+    
+</head>
+<body>
+    <div id="interactive-bg"></div>
+    <button id="anim-toggle" title="Attiva/Disattiva Animazioni">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width=".5"><circle cx="7" cy="17" r="4"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="4"/></svg>
+    </button>
+    <div class="container" id="main-container">
+        <header>
+            <h1>Domande sull'ottica</h1>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Generatore casuale di domande per la prova orale</p>
+        </header>
+
+        <div id="error-box" class="error-message"></div>
+
+        <div class="controls">
+            <div class="controls-secondary">
+                <button id="sim-btn" class="btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6L13 6zM4 18l8.5-6L4 6v12z"/></svg>
+                    Simula 10k
+                </button>
+                <button id="reset-btn" class="reset btn-secondary">
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    Reset Dati
+                </button>
+            </div>
+            <button id="pick-btn">
+                <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                Estrai 2 Domande
+            </button>
+        </div>
+
+        <div id="questions-display" class="questions-container">
+            <!-- Questions will appear here -->
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">
+                Premi "Estrai" per iniziare.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Stats Bottom Panel (Moved outside container to avoid filter/transform issues) -->
+    <div id="stats-panel" class="bottom-panel">
+        <!-- Toggle Button attached to panel -->
+        <div id="toggle-stats-btn" class="toggle-stats-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+            </svg>
+        </div>
+
+        <div class="bottom-panel-content">
+            <!-- Removed close-btn since arrow handles it -->
+            <div class="stats-section">
+                <div class="stats-header">
+                    <div class="stats-title">Statistiche Utilizzo</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Frequenza di estrazione</div>
+                </div>
+                <div id="histogram" class="histogram">
+                    <!-- Histogram bars -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Container -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close">&times;</button>
+        <img id="lightbox-img" alt="Ingrandimento">
+    </div>
+
+    <script>
+        // State
+        let questions = [];
+        let stats = {};
+        const STORAGE_KEY = 'ottica_stats';
+
+        // Elements
+        const pickBtn = document.getElementById('pick-btn');
+        const simBtn = document.getElementById('sim-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const toggleBtn = document.getElementById('toggle-stats-btn');
+        const questionsDisplay = document.getElementById('questions-display');
+        const histogramEl = document.getElementById('histogram');
+        const errorBox = document.getElementById('error-box');
+        const panel = document.getElementById('stats-panel');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxClose = document.querySelector('.lightbox-close');
+        const mainContainer = document.getElementById('main-container');
+        const bg = document.getElementById('interactive-bg');
+        const animToggle = document.getElementById('anim-toggle');
+
+        // Mouse Movement Effect & Liquid Trail
+        let lastX = 0, lastY = 0;
+        let lastTime = 0;
+        let animationsEnabled = localStorage.getItem('animationsEnabled') !== 'false'; // Default true
+
+        // Apply initial state
+        if (!animationsEnabled) {
+            document.body.classList.add('no-animation');
+            animToggle.style.opacity = '0.5';
+        }
+
+        animToggle.addEventListener('click', () => {
+            animationsEnabled = !animationsEnabled;
+            document.body.classList.toggle('no-animation', !animationsEnabled);
+            animToggle.style.opacity = animationsEnabled ? '1' : '0.5';
+            localStorage.setItem('animationsEnabled', animationsEnabled);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!animationsEnabled) return;
+
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Update gradient center
+            bg.style.setProperty('--mouse-x', `${x}px`);
+            bg.style.setProperty('--mouse-y', `${y}px`);
+
+            // Create liquid trail
+            const now = Date.now();
+            if (now - lastTime > 40) { // Throttle creation
+                createTrailDot(x, y);
+                lastTime = now;
+            }
+        });
+
+        function createTrailDot(x, y) {
+            const dot = document.createElement('div');
+            dot.className = 'trail-dot';
+            dot.style.left = `${x}px`;
+            dot.style.top = `${y}px`;
+            document.body.appendChild(dot);
+            
+            // Cleanup
+            setTimeout(() => {
+                dot.remove();
+            }, 1000);
+        }
+
+        // ... (init and other functions remain same) ...
+
+        // Event Listeners
+        pickBtn.addEventListener('click', pickQuestions);
+        simBtn.addEventListener('click', runSimulation);
+        resetBtn.addEventListener('click', resetStats);
+        
+        toggleBtn.onclick = function() {
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) {
+                renderHistogram();
+            }
+        }
+
+        // Lightbox Logic
+        function openLightbox(src) {
+            lightboxImg.src = src;
+            lightbox.style.display = 'flex';
+            // Force reflow to enable transition
+            void lightbox.offsetWidth;
+            lightbox.classList.add('active');
+            mainContainer.classList.add('blur-active');
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+            mainContainer.classList.remove('blur-active');
+            setTimeout(() => { 
+                lightbox.style.display = 'none'; 
+                lightboxImg.removeAttribute('src'); 
+            }, 400); // Wait for transition (0.4s)
+        }
+
+        lightbox.addEventListener('click', (e) => {
+            if (e.target !== lightboxImg) {
+                closeLightbox();
+            }
+        });
+
+        lightboxClose.addEventListener('click', closeLightbox);
+
+        // Delegate image clicks for lightbox
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'IMG' && e.target.closest('.question-text')) {
+                openLightbox(e.target.src);
+            }
+        });
+        
+        // Removed window.onclick (click outside) to keep it open until explicitly closed
+
+        // Initialization
+        function init() {
+            loadStats();
+            parseQuestions(QUESTIONS_DATA);
+            renderHistogram();
+        }
+
+        // Embedded Questions Data
+        const QUESTIONS_DATA = `
+1. **{1}** **[EE]** Spiega come funziona una meridiana (una meridiana è semplicemente un bastone verticale fissato nel terreno).
+2. **{1}** **[E]** I diametri visibili della Luna e del Sole sono quasi uguali. Cosa dovresti vedere se la Luna si trovasse sulla stessa linea visiva del Sole? Spiega.
+3. **{1}** **[F]** Vuoi creare una camera oscura usando un muro bianco come schermo e te stesso come oggetto di interesse. Disegna uno schizzo che mostri il muro, il foro, il punto in cui ti dovrai sedere, la posizione migliore per il Sole o un'altra fonte di luce e la posizione delle persone che guardano il muro. L'immagine apparirà dritta o capovolta? Spiega.
+4. **{1}** **[EE]** Sei in piedi sotto un albero. L'ombra dell'albero è lunga 34 m e la tua ombra è circa il doppio della tua altezza. Quanto è alto l'albero?
+5. **{1}** **[EE]** Cosa devi fare per creare ombre di dimensioni diverse di una stessa matita?
+6. **{1}** **[F-]** Se stai vicino a un lampione di notte, l'ombra del tuo piede (se leggermente sollevato da terra) è piuttosto nitida, mentre l'ombra della tua testa appare sfocata. Perché?
+7. **{1}** **[PD]** In quali casi puoi vedere solo la penombra di un oggetto e non la sua ombra piena?
+8. **{1}** **[F]** Perché, quando ti allontani da una lampadina muovendoti verso uno schermo, la tua ombra sullo schermo diventa sempre più nitida?
+9. **{1}** **[F]** Perché non riesci a vedere l'ombra di una matita sul muro se la posizioni vicino a una lampadina?
+10. **{1}** **[F+]** L'ombra della mano di un chirurgo ostacola la sua vista durante un'operazione. Suggerisci una fonte di luce alternativa che eviti questo problema. Includi uno o più schizzi per il piano da te proposto.
+11. **{1}** **[F+]** Tu e un/a tuo/a amico/a state cenando a lume di candela in modo romantico. Noti che le ombre delle vostre mani sul muro sembrano sfocate. Tuttavia, l'ombra del bicchiere è molto nitida e definita. Dove siete seduti tu e il/la tuo/a amico/a rispetto alla candela e al muro? Dov'è il bicchiere? Per rispondere a queste domande, disegna dei diagrammi a raggi assumendo che la candela sia una sorgente di luce estesa.
+12. **{1}** **[F+]** Tre sorgenti luminose puntiformi allineate orizzontalmente. Sotto di esse, a una certa distanza, si trova un ostacolo di carta nero orizzontale, più corto della sorgente, e ancora più sotto uno schermo orizzontale. Disegna questo schema e determina le regioni d'ombra e di penombra sullo schermo tracciando i raggi dalle tre sorgenti luminose puntiformi. Confronta qualitativamente le luminosità (o oscurità) relative di queste regioni.
+13. **{2}** **[E]** Quali effetti della propagazione e della riflessione della luce sono responsabili del fatto che possiamo vedere gli oggetti in una stanza?
+14. **{2}** **[EE]** Sei in piedi sul ciglio di una strada. Perché la luce dei fari di un'auto di passaggio è più facile da vedere in caso di nebbia rispetto a quando il tempo è sereno?
+15. **{2}** **[F]** Perché non riesci a vedere le stelle durante il giorno?
+16. **{2}** **[F-]** Perché l'interno di un pozzo sembra nero?
+17. **{2}** **[PD]** Durante il giorno, puoi vedere gli alberi del tuo giardino attraverso la finestra, ma fai fatica a vedere te stesso riflesso. Di notte, fai fatica a vedere gli alberi attraverso la stessa finestra, ma puoi vedere chiaramente te stesso riflesso. Spiega.
+18. **{2}** **[PD-]** Progetta un esperimento che puoi eseguire per testare la legge della riflessione. Descrivi gli strumenti che intendi utilizzare.
+19. **{2}** **[AD]** Progetta una disposizione di specchi in modo che la luce di un puntatore laser viaggi esattamente nella direzione opposta dopo essersi riflessa sugli specchi, anche se cambi la direzione in cui punta il puntatore laser.
+20. **{3}** **[F]** Un raggio di luce subirà una riflessione totale interna passando dal vetro all'acqua o dall'acqua al vetro? Spiega (includi dei disegni).
+21. **{3}** **[F]** In una calda giornata di sole, a volte un'autostrada sembra bagnata. Perché?
+22. **{3}** **[PD+]** Nuoti sott'acqua di notte e punti un puntatore laser in modo che colpisca l'interfaccia acqua-aria con un angolo di incidenza di 52°. Un amico vedrà la luce sopra l'acqua? Spiega.
+23. **{3}** **[F+]** Guardi un pesce sott'acqua. Disegna un diagramma dei raggi della luce che dal pesce entra nel tuo occhio.
+24. **{3}** **[F+]** Prendi una matita e prova a toccare una moneta sul fondo di una grande pentola d'acqua guardando dentro la pentola da un'angolazione. Spiega perché è difficile farlo.
+25. **{3}** **[E]** Un raggio laser passa dall'aria in una soluzione di glucosio al 25% con un angolo di incidenza di 35°. In quale direzione viaggia la luce nella soluzione di glucosio? Disegna una figura che mostri l'interfaccia tra i mezzi, la normale, i raggi incidenti, i raggi riflessi, i raggi rifratti e i loro angoli rispetto alla normale.
+26. **{3}** **[E]** Il raggio viaggia dall'alcol etilico all'aria con un angolo di incidenza di 12°. Determina l'angolo del raggio rifratto nell'aria. Disegna una figura che mostri l'interfaccia tra i mezzi, la normale, i raggi incidenti, i raggi riflessi, i raggi rifratti e i loro angoli rispetto alla normale.
+27. **{3}** **[EE]** Un raggio di luce passa da un vetro con indice di rifrazione 1.58 all'acqua con indice di rifrazione 1.33. L'angolo del raggio rifratto nell'acqua è 58.0°. Fai uno schizzo della situazione indicando l'interfaccia, la normale, il raggio incidente, il raggio riflesso, il raggio rifratto e i relativi angoli.
+28. **{3}** **[EE]** Un raggio di luce passa dall'aria a un prodotto petrolifero trasparente, il cicloesano, con un angolo di incidenza di 48°. L'angolo di rifrazione è 31°. Qual è l'indice di rifrazione del cicloesano?
+29. **{3}** **[PD]** Un raggio di luce colpisce l'interfaccia tra l'aria e un materiale sconosciuto con un angolo di 43° rispetto alla normale. Il raggio riflesso e il raggio rifratto formano un angolo di 108° l'uno rispetto all'altro. Qual è l'indice di rifrazione del materiale?
+30. **{3}** Umor vitreo **[F+]** Dietro il cristallino dell'occhio si trova l'umor vitreo, una sostanza gelatinosa che occupa la maggior parte del bulbo oculare. L'indice di rifrazione dell'umor vitreo è 1.35 e quello del cristallino è 1.44. Uno stretto raggio di luce che viaggia nel cristallino colpisce l'interfaccia con l'umor vitreo con un angolo di 23°. Qual è la sua direzione rispetto all'interfaccia quando si trova nell'umor vitreo?
+31. **{4}** **[PD-]** Spiega come un prisma trasforma un raggio di luce bianca in un arcobaleno.
+32. **{4}** **[E]** Una torcia elettrica è puntata contro una parete: si forma così sulla parte un cerchio bianco illuminato. Se una gelatina rossa (ovvero un filtro rosso) è posto di fronte alla torcia, sulla parete si forma un cerchio rosso illuminato. Spiega in che modo la gelatina ha modificato il colore della luce.
+33. **{4}** **[EE]** Di che colore appariranno una matita rossa e una matita blu se illuminate da una luce rossa? E se illuminate da una luce bianca e viste attraverso un filtro rosso?
+34. **{4}** **[F+]** Spiega il funzionamento di uno schermo OLED.
+`;
+
+        // Parse Markdown content
+        function parseQuestions(text) {
+            const lines = text.split('\n');
+            const parsed = [];
+            let currentQ = null;
+
+            // Regex for start of question: "1. **{Group}** Text" or "1. {Group} Text"
+            // Handles optional bolding (**) around the group
+            const startRegex = /^\s*(\d+)\.\s*(?:\*\*)?\{([^}]+)\}(?:\*\*)?\s*(.*)/;
+
+            lines.forEach(line => {
+                const match = line.match(startRegex);
+                if (match) {
+                    if (currentQ) parsed.push(currentQ);
+                    currentQ = {
+                        number: parseInt(match[1]),
+                        group: match[2].trim(),
+                        text: match[3].trim()
+                    };
+                } else if (currentQ) {
+                    // Append continuation lines
+                    const trimmed = line.trim();
+                    if (trimmed) {
+                        currentQ.text += ' ' + trimmed;
+                    }
+                }
+            });
+            if (currentQ) parsed.push(currentQ);
+
+            questions = parsed;
+            console.log(`Loaded ${questions.length} questions.`);
+            
+            if (questions.length === 0) {
+                showError("Nessuna domanda trovata nel file. Controlla il formato (es. '1. **{A}** Testo').");
+            }
+        }
+
+        // Helper to pick 2 questions from different groups uniformly
+        function getBalancedPair() {
+            if (questions.length < 2) return null;
+            
+            const hasDifferentGroups = new Set(questions.map(q => q.group)).size > 1;
+            
+            let q1, q2;
+            let attempts = 0;
+            do {
+                q1 = questions[Math.floor(Math.random() * questions.length)];
+                q2 = questions[Math.floor(Math.random() * questions.length)];
+                attempts++;
+                // safety break
+                if (attempts > 1000) break;
+            } while (q1 === q2 || (hasDifferentGroups && q1.group === q2.group));
+            
+            return [q1, q2];
+        }
+
+        // Logic to pick 2 random questions
+        function pickQuestions() {
+            if (questions.length < 2) {
+                alert("Non ci sono abbastanza domande nel file.");
+                return;
+            }
+
+            const pair = getBalancedPair();
+            if (pair) {
+                displayQuestions(pair);
+                updateStats(pair);
+            } else {
+                console.error("Could not generate pair");
+            }
+        }
+
+        // Display logic
+        function displayQuestions(pair) {
+            questionsDisplay.innerHTML = pair.map(q => `
+                <div class="question-card">
+                    <div class="question-header">
+                        <span class="question-number">#${q.number}</span>
+                        <span class="question-group">Gruppo ${q.group}</span>
+                    </div>
+                    <div class="question-text">
+                        ${formatText(q.text)}
+                    </div>
+                </div>
+            `).join('');
+            
+
+        }
+
+        // Basic markdown formatting for the text
+        function formatText(text) {
+            // Convert **bold** to <b>, *italic* to <i>, `code` to <code>
+            // Convert ![alt](src) to <img>
+            return text
+                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                .replace(/`(.*?)`/g, '<code>$1</code>');
+        }
+
+        // Stats & LocalStorage
+        function loadStats() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                stats = JSON.parse(saved);
+            }
+        }
+
+        function updateStats(pair) {
+            pair.forEach(q => {
+                stats[q.number] = (stats[q.number] || 0) + 1;
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+            renderHistogram();
+        }
+
+        function runSimulation() {
+            if (questions.length < 2) {
+                alert("Non ci sono abbastanza domande.");
+                return;
+            }
+            
+            const N = 10000;
+            
+            for (let i = 0; i < N; i++) {
+                const pair = getBalancedPair();
+                if (pair) {
+                    pair.forEach(q => {
+                        stats[q.number] = (stats[q.number] || 0) + 1;
+                    });
+                }
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+            renderHistogram();
+            // Optional: Auto-open panel to show results
+            if (!panel.classList.contains('open')) {
+                panel.classList.add('open');
+            }
+        }
+
+        function resetStats() {
+            if(confirm("Sei sicuro di voler resettare tutte le statistiche?")) {
+                stats = {};
+                localStorage.removeItem(STORAGE_KEY);
+                renderHistogram();
+                questionsDisplay.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">Statistiche resettate. Premi "Estrai" per ricominciare.</div>';
+            }
+        }
+
+        function renderHistogram() {
+            // Sort by question number
+            const sortedNumbers = questions.map(q => q.number).sort((a, b) => a - b);
+            
+            if (sortedNumbers.length === 0) {
+                histogramEl.innerHTML = '<div style="text-align:center; color: var(--text-secondary);">Nessun dato disponibile</div>';
+                return;
+            }
+
+            // Find max for scaling
+            const maxCount = Math.max(...Object.values(stats), 1);
+
+            histogramEl.innerHTML = sortedNumbers.map(num => {
+                const count = stats[num] || 0;
+                const percentage = (count / maxCount) * 100;
+                const question = questions.find(q => q.number === num);
+                const group = question ? question.group : '?';
+                
+                return `
+                    <div class="hist-item" data-id="${num}">
+                        <div class="hist-bar-container">
+                            <div class="hist-label">
+                                <span class="group-tag">${group}</span>
+                                <span style="font-weight:600">#${num}</span>
+                            </div>
+                            <div class="hist-bar-wrapper" onclick="toggleQuestionDetail(${num})">
+                                <div class="hist-bar" style="width: ${percentage}%">
+                                    ${count > 0 ? `<span class="hist-count">${count}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div id="detail-${num}" class="hist-question-detail">
+                            ${question ? formatText(question.text) : 'Errore caricamento domanda.'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleQuestionDetail(id) {
+            const detailEl = document.getElementById(`detail-${id}`);
+            // Close others? Optional. Let's keep others open for comparison if user wants.
+            // Actually, usually accordion style is nice, but simple toggle is fine.
+            
+            // If we want to close others:
+            document.querySelectorAll('.hist-question-detail.active').forEach(el => {
+                if (el.id !== `detail-${id}`) el.classList.remove('active');
+            });
+
+            detailEl.classList.toggle('active');
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
+
